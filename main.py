@@ -1,20 +1,25 @@
 import numpy as np
-from src.neuron import Neuron
+from src.layer import Layer
 
-# Configuración básica
-inputs = np.array([1, 2, 3])
-neuron = Neuron(n_input=3)
+# 1. Crear datos de prueba
+inputs = np.array([1.0, 2.0, 3.0])  # 3 Entradas
 
-# Prueba de Forward
+# 2. Crear una Capa
+# 4 neuronas, cada una espera 3 entradas
+layer = Layer(num_neurons=4, inputs_size=3) 
+
+# --- Forward Pass ---
 print("--- Forward Pass ---")
-output = neuron.forward(inputs)
-print(f"Predicción inicial: {output}")
+outputs = layer.forward(inputs)
+print(f"Salidas de la capa (4 neuronas): {outputs}")
 
-# Prueba de Backward (Entrenamiento simple)
+# --- Backward Pass ---
 print("\n--- Backward Pass ---")
-target = 1.0 # Supongamos que queremos que aprenda a dar 1
+# Simulamos un gradiente de error que viene de la siguiente capa (o función de pérdida)
+# Debe tener el mismo tamaño que 'outputs' (4)
+d_outputs = np.array([0.1, -0.1, 0.0, 0.5]) 
 learning_rate = 0.1
-error_grad = 2 * (output - target) # Derivada simple del error cuadrático
 
-neuron.backward(error_grad, learning_rate)
-print("Pesos actualizados.")
+d_inputs = layer.backward(d_outputs, learning_rate)
+print(f"Gradientes para la capa anterior: {d_inputs}")
+print("Pesos de las neuronas actualizados.")
