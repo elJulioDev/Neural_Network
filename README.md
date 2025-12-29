@@ -71,7 +71,7 @@ python main.py
 
 ## 🔐 Uso del Sistema
 La librería está diseñada para ser intuitiva. Aquí tienes un ejemplo de cómo configurar una red para clasificación:
-```bash
+```python
 import numpy as np
 from src.neural_network import NeuralNetwork
 from src.activations import LeakyReLU, Sigmoid
@@ -91,6 +91,41 @@ nn.train(X, y, epochs=10000, learning_rate=0.1)
 
 # 4. Predecir
 predicciones = nn.predict(X)
+```
+
+## 🔌 Integración en Proyectos Reales (Ej. Django/Flask)
+
+Gracias a que `NeuralNetwork` es un paquete instalable, puedes integrarlo fácilmente en backends web.
+
+1. **Instalar la librería en tu otro proyecto:**
+```bash
+# Desde la carpeta de tu proyecto Django
+pip install git+[https://github.com/elJulioDev/neural_network.git](https://github.com/elJulioDev/neural_network.git)
+```
+
+2. **Ejemplo de uso en una vista de Django (views.py):**
+```python
+from django.http import JsonResponse
+from neural_network import NeuralNetwork
+import numpy as np
+import os
+
+# Cargar el modelo entrenado (Singleton recomendado para producción)
+MODEL_PATH = os.path.join(os.path.dirname(__file__), 'modelos', 'xor_model.pkl')
+ai_model = NeuralNetwork.load_model(MODEL_PATH)
+
+def predecir_view(request):
+    # Suponiendo que recibes datos [0, 1]
+    datos_entrada = np.array([[0, 1]]) 
+
+    # Realizar inferencia
+    prediccion = ai_model.predict(datos_entrada)
+
+    return JsonResponse({
+        'input': [0, 1],
+        'prediccion': float(prediccion[0][0]),
+        'clase': 1 if prediccion > 0.5 else 0
+    })
 ```
 
 ## 📂 Estructura del Proyecto
