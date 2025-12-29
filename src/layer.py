@@ -9,7 +9,7 @@ class Layer:
         return np.array([neuron.forward(inputs) for neuron in self.neurons])
     
     def backward(self, d_outputs, learning_rate):
-        d_inputs = np.zeros_like(self.neurons[0].inputs)
+        d_inputs = np.zeros_like(self.neurons[0].inputs, dtype=float)
         for i, neuron in enumerate(self.neurons):
             d_inputs += neuron.backward(d_outputs[i], learning_rate)
         return d_inputs

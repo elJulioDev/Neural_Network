@@ -1,25 +1,37 @@
 import numpy as np
-from src.layer import Layer
+from src.neural_network import NeuralNetwork
 
-# 1. Crear datos de prueba
-inputs = np.array([1.0, 2.0, 3.0])  # 3 Entradas
+if __name__ == "__main__":
+    # --- Datos de entrenamiento (Compuerta XOR) ---
+    # Entradas: [0,0], [0,1], [1,0], [1,1]
+    X = np.array([
+        [0, 0],
+        [0, 1],
+        [1, 0],
+        [1, 1]
+    ])
+    
+    # Salidas esperadas: 0, 1, 1, 0
+    y = np.array([
+        [0],
+        [1],
+        [1],
+        [0]
+    ])
 
-# 2. Crear una Capa
-# 4 neuronas, cada una espera 3 entradas
-layer = Layer(num_neurons=4, inputs_size=3) 
+    print("--- Inicializando Red Neuronal ---")
+    nn = NeuralNetwork()
 
-# --- Forward Pass ---
-print("--- Forward Pass ---")
-outputs = layer.forward(inputs)
-print(f"Salidas de la capa (4 neuronas): {outputs}")
+    # Estructura: 2 entradas -> Capa Oculta (4 neuronas) -> Salida (1 neurona)
+    nn.add_layer(num_neurons=4, input_size=2) # Capa oculta
+    nn.add_layer(num_neurons=1)               # Capa de salida
 
-# --- Backward Pass ---
-print("\n--- Backward Pass ---")
-# Simulamos un gradiente de error que viene de la siguiente capa (o función de pérdida)
-# Debe tener el mismo tamaño que 'outputs' (4)
-d_outputs = np.array([0.1, -0.1, 0.0, 0.5]) 
-learning_rate = 0.1
+    print("--- Iniciando Entrenamiento ---")
+    # Entrenamos con una tasa de aprendizaje baja para ver la convergencia
+    nn.train(X, y, epochs=10000, learning_rate=0.1)
 
-d_inputs = layer.backward(d_outputs, learning_rate)
-print(f"Gradientes para la capa anterior: {d_inputs}")
-print("Pesos de las neuronas actualizados.")
+    print("\n--- Resultados Finales ---")
+    predictions = nn.predict(X)
+    
+    for i in range(len(X)):
+        print(f"Entrada: {X[i]} | Predicción: {predictions[i][0]:.4f} | Esperado: {y[i][0]}")
