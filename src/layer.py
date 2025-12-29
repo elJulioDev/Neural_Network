@@ -1,9 +1,12 @@
 import numpy as np
 from .neuron import Neuron
+from .activations import Sigmoid
 
 class Layer:
-    def __init__(self, num_neurons, inputs_size):
-        self.neurons = [Neuron(inputs_size) for _ in range(num_neurons)]
+    def __init__(self, num_neurons, inputs_size, activation=Sigmoid()):
+        self.activation = activation
+        # Pasamos 'activation' a la Neurona
+        self.neurons = [Neuron(inputs_size, activation) for _ in range(num_neurons)]
 
     def forward(self, inputs):
         return np.array([neuron.forward(inputs) for neuron in self.neurons])

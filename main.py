@@ -1,5 +1,7 @@
 import numpy as np
 from src.neural_network import NeuralNetwork
+from src.activations import Sigmoid, LeakyReLU 
+from src.losses import BinaryCrossEntropy
 
 if __name__ == "__main__":
     # --- Datos de entrenamiento (Compuerta XOR) ---
@@ -20,12 +22,14 @@ if __name__ == "__main__":
     ])
 
     print("--- Inicializando Red Neuronal ---")
-    nn = NeuralNetwork()
+    nn = NeuralNetwork(loss_function=BinaryCrossEntropy())
 
     # Estructura: 2 entradas -> Capa Oculta (4 neuronas) -> Salida (1 neurona)
-    nn.add_layer(num_neurons=4, input_size=2) # Capa oculta
-    nn.add_layer(num_neurons=1)               # Capa de salida
-
+    
+    # CAMBIO: Usamos LeakyReLU en la oculta para mayor seguridad
+    nn.add_layer(num_neurons=4, input_size=2, activation=LeakyReLU()) 
+    nn.add_layer(num_neurons=1, activation=Sigmoid())
+    
     print("--- Iniciando Entrenamiento ---")
     # Entrenamos con una tasa de aprendizaje baja para ver la convergencia
     nn.train(X, y, epochs=10000, learning_rate=0.1)
