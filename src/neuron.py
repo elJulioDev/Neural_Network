@@ -7,7 +7,7 @@ class Neuron:
         self.weights = np.random.randn(n_input) * np.sqrt(2 / n_input)
         
         # El sesgo (bias) debe iniciar en 0 para no empujar a negativo desde el principio
-        self.bias = 0
+        self.bias = 0.0
         # Inicializamos variables
         self.weighted_sum = 0
         self.output = 0
