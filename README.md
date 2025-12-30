@@ -4,7 +4,7 @@ Este proyecto es una librería de Deep Learning ligera y modular desarrollada í
 
 Está diseñada para ser escalable y educativa, permitiendo la creación de arquitecturas personalizadas para resolver problemas de clasificación binaria y regresión, como el clásico problema XOR.
 
-## 🚀 Características Principales
+## Características Principales
 * **Arquitectura Modular:**
     * **Diseño Orientado a Objetos:** Separación lógica entre Neuronas, Capas (`Layer`) y el Orquestador (`NeuralNetwork`).
     * **Activaciones Flexibles:** Implementación de funciones `Sigmoid`, `ReLU` y `LeakyReLU` intercambiables por capa.
@@ -20,7 +20,7 @@ Está diseñada para ser escalable y educativa, permitiendo la creación de arqu
 * **Visualización:**
     * Integración con `matplotlib` para generar curvas de aprendizaje y monitorear la convergencia del error en tiempo real.
 
-## 🛠️ Tecnologías Utilizadas
+## Tecnologías Utilizadas
 El proyecto utiliza un stack enfocado en el cálculo numérico y la eficiencia matemática:
 * **Lenguaje:** Python 3.10+
 * **Cálculo Numérico:** NumPy (Álgebra lineal, operaciones matriciales).
@@ -28,13 +28,13 @@ El proyecto utiliza un stack enfocado en el cálculo numérico y la eficiencia m
 * **Visualización:** Matplotlib (Gráficos de curvas de pérdida).
 * **Testing:** Unittest (Pruebas unitarias para neuronas, capas y pérdidas).
 
-## 📋 Pre-requisitos
+## Pre-requisitos
 Asegúrate de tener instalado y configurado lo siguiente:
 * Python 3.8 o superior
 * Git
 * Virtualenv (recomendado)
 
-## 🔧 Instalación y Configuración
+## Instalación y Configuración
 Sigue estos pasos para levantar el proyecto en tu entorno local:
 
 1. **Clonar el repositorio:**
@@ -69,7 +69,7 @@ python -m unittest discover tests
 python main.py
 ```
 
-## 🔐 Uso del Sistema
+## Uso del Sistema
 La librería está diseñada para ser intuitiva. Aquí tienes un ejemplo de cómo configurar una red para clasificación:
 ```python
 import numpy as np
@@ -93,7 +93,7 @@ nn.train(X, y, epochs=10000, learning_rate=0.1)
 predicciones = nn.predict(X)
 ```
 
-## 🔌 Integración en Proyectos Reales (Ej. Django/Flask)
+## Integración en Proyectos Reales (Ej. Django/Flask)
 
 Gracias a que `NeuralNetwork` es un paquete instalable, puedes integrarlo fácilmente en backends web.
 
@@ -128,7 +128,7 @@ def predecir_view(request):
     })
 ```
 
-## 📂 Estructura del Proyecto
+## Estructura del Proyecto
 ```text
 neural_network/
 ├── src/                            # Código fuente de la librería
@@ -149,8 +149,5 @@ neural_network/
 └── .gitignore                      # Archivos ignorados
 ```
 
-## 👥 Créditos
-Este proyecto ha sido desarrollado por **Alexis González** como parte de una investigación profunda sobre los fundamentos matemáticos de la Inteligencia Artificial.
-
-## 📄 Licencia
+## Licencia
 Este proyecto es de uso educativo y personal. Se distribuye bajo la licencia MIT.
