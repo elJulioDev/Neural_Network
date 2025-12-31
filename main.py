@@ -1,41 +1,24 @@
+# Nuevo main.py de ejemplo
 import numpy as np
 from src.neural_network import NeuralNetwork
-from src.activations import Sigmoid, LeakyReLU 
+from src.activations import LeakyReLU, Sigmoid
 from src.losses import BinaryCrossEntropy
+from src.optimizers import SGD
 
 if __name__ == "__main__":
-    # --- Datos de entrenamiento (Compuerta XOR) ---
-    # Entradas: [0,0], [0,1], [1,0], [1,1]
-    X = np.array([
-        [0, 0],
-        [0, 1],
-        [1, 0],
-        [1, 1]
-    ])
-    
-    # Salidas esperadas: 0, 1, 1, 0
-    y = np.array([
-        [0],
-        [1],
-        [1],
-        [0]
-    ])
+    X = np.array([[0,0], [0,1], [1,0], [1,1]])
+    y = np.array([[0], [1], [1], [0]])
 
-    print("--- Inicializando Red Neuronal ---")
-    nn = NeuralNetwork(loss_function=BinaryCrossEntropy())
-
-    # Estructura: 2 entradas -> Capa Oculta (4 neuronas) -> Salida (1 neurona)
+    # Definimos optimizador con Momentum (Acelera el entrenamiento)
+    optimizer = SGD(learning_rate=0.1, momentum=0.9)
     
-    # CAMBIO: Usamos LeakyReLU en la oculta para mayor seguridad
-    nn.add_layer(num_neurons=4, input_size=2, activation=LeakyReLU()) 
+    nn = NeuralNetwork(loss_function=BinaryCrossEntropy(), optimizer=optimizer)
+    
+    # Arquitectura
+    nn.add_layer(num_neurons=4, input_size=2, activation=LeakyReLU())
     nn.add_layer(num_neurons=1, activation=Sigmoid())
     
-    print("--- Iniciando Entrenamiento ---")
-    # Entrenamos con una tasa de aprendizaje baja para ver la convergencia
-    nn.train(X, y, epochs=10000, learning_rate=0.1)
-
-    print("\n--- Resultados Finales ---")
-    predictions = nn.predict(X)
+    # Entrenar (Batch size 4 es todo el dataset en este caso pequeño)
+    nn.train(X, y, epochs=100000, batch_size=4)
     
-    for i in range(len(X)):
-        print(f"Entrada: {X[i]} | Predicción: {predictions[i][0]:.4f} | Esperado: {y[i][0]}")
+    print(nn.predict(X))
