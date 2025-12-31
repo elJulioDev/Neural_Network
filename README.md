@@ -1,41 +1,35 @@
-# NeuralNetwork - Librería de Deep Learning desde Cero
+# NeuralNetwork - Librería de Deep Learning Vectorizada
 
-Este proyecto es una librería de Deep Learning ligera y modular desarrollada íntegramente en Python y NumPy. A diferencia de frameworks de alto nivel como TensorFlow o PyTorch, **NeuralNetwork** implementa la matemática de las redes neuronales desde la base, permitiendo una comprensión profunda de los algoritmos de retropropagación (Backpropagation), optimización y funciones de activación.
+Este proyecto es una librería de Deep Learning ligera, modular y **completamente vectorizada** desarrollada en Python y NumPy. A diferencia de implementaciones educativas básicas, **NeuralNetwork** utiliza operaciones matriciales para un rendimiento superior, implementando desde cero algoritmos de retropropagación (Backpropagation), optimizadores con momentum y diversas funciones de activación.
 
-Está diseñada para ser escalable y educativa, permitiendo la creación de arquitecturas personalizadas para resolver problemas de clasificación binaria y regresión, como el clásico problema XOR.
+Está diseñada para ser escalable, permitiendo crear arquitecturas profundas para resolver problemas de clasificación binaria, multiclase y regresión.
 
 ## Características Principales
-* **Arquitectura Modular:**
-    * **Diseño Orientado a Objetos:** Separación lógica entre Neuronas, Capas (`Layer`) y el Orquestador (`NeuralNetwork`).
-    * **Activaciones Flexibles:** Implementación de funciones `Sigmoid`, `ReLU` y `LeakyReLU` intercambiables por capa.
-* **Optimización Matemática Avanzada:**
-    * **Inicialización de He:** Inicialización inteligente de pesos para prevenir el desvanecimiento de gradientes en redes profundas.
-    * **Funciones de Pérdida (Loss Functions):** Soporte para `MSE` (Error Cuadrático Medio) y `BinaryCrossEntropy` (Entropía Cruzada Binaria).
-    * **Prevención de "Dying ReLU":** Implementación de `LeakyReLU` para mantener el flujo de gradientes en valores negativos.
-* **Entrenamiento Robusto:**
-    * **Stochastic Gradient Descent (SGD):** Optimización de pesos mediante descenso de gradiente.
-    * **Data Shuffling:** Barajado automático de datos en cada época para evitar mínimos locales y ciclos repetitivos.
-* **Persistencia de Modelos:**
-    * Sistema nativo para guardar (`save_model`) y cargar (`load_model`) redes entrenadas utilizando `pickle`.
-* **Visualización:**
-    * Integración con `matplotlib` para generar curvas de aprendizaje y monitorear la convergencia del error en tiempo real.
+
+* **Arquitectura Vectorizada:**
+    * **Alto Rendimiento:** Eliminación de bucles a nivel de neurona. Las capas (`Layer`) procesan lotes de datos (batches) utilizando álgebra matricial eficiente.
+    * **Diseño Modular:** Componentes desacoplados para Capas, Activaciones, Pérdidas y Optimizadores.
+
+* **Sistema de Optimizadores:**
+    * **SGD con Momentum:** Implementación de Descenso de Gradiente Estocástico con término de momento para acelerar la convergencia y evitar mínimos locales.
+    * **Gestión de Hiperparámetros:** Control granular del *learning rate* y *momentum*.
+
+* **Flexibilidad Arquitectónica:**
+    * **Activaciones:** `Sigmoid`, `ReLU`, `LeakyReLU` (con prevención de neuronas muertas), `Softmax` (para multiclase) y `Linear` (para regresión).
+    * **Capas Especiales:** Soporte para **Dropout** para regularización y prevención de overfitting.
+    * **Funciones de Pérdida:** `MSE` (Error Cuadrático Medio), `BinaryCrossEntropy` y `CategoricalCrossEntropy`.
+
+* **Entrenamiento Profesional:**
+    * **Mini-Batch Training:** Procesamiento de datos en lotes para mayor estabilidad y velocidad.
+    * **Inicialización de He:** Pesos inicializados inteligentemente para redes profundas.
+    * **Persistencia:** Guardado y carga de modelos entrenados (`pickle`).
 
 ## Tecnologías Utilizadas
-El proyecto utiliza un stack enfocado en el cálculo numérico y la eficiencia matemática:
 * **Lenguaje:** Python 3.10+
-* **Cálculo Numérico:** NumPy (Álgebra lineal, operaciones matriciales).
-* **Empaquetado:** Setuptools (Estructura de librería instalable).
-* **Visualización:** Matplotlib (Gráficos de curvas de pérdida).
-* **Testing:** Unittest (Pruebas unitarias para neuronas, capas y pérdidas).
+* **Cálculo Numérico:** NumPy (Operaciones matriciales y álgebra lineal).
+* **Testing:** Unittest (Cobertura de capas, optimizadores y pérdidas).
 
-## Pre-requisitos
-Asegúrate de tener instalado y configurado lo siguiente:
-* Python 3.8 o superior
-* Git
-* Virtualenv (recomendado)
-
-## Instalación y Configuración
-Sigue estos pasos para levantar el proyecto en tu entorno local:
+## Instalación
 
 1. **Clonar el repositorio:**
 ```bash
@@ -43,20 +37,20 @@ git clone [https://github.com/elJulioDev/Neural_Network.git](https://github.com/
 cd neural_network
 ```
 
-2. **Crear y activar un entorno virtual:**
+2. **Instalar dependencias:** Puedes instalarlo como un paquete local editable o instalar las dependencias directamente:
+```bash
+pip install -r requirements.txt
+# O alternativamente para desarrollo:
+pip install -e .
+```
+
+3. **Crear y activar un entorno virtual:**
 ```bash
 python -m venv venv
 # En Windows:
 venv\Scripts\activate
 # En macOS/Linux:
 source venv/bin/activate
-```
-
-3. **Instalar dependencias:** Puedes instalarlo como un paquete local editable o instalar las dependencias directamente:
-```bash
-pip install -r requirements.txt
-# O alternativamente para desarrollo:
-pip install -e .
 ```
 
 4. **Ejecutar Pruebas Unitarias:** Para asegurar que toda la matemática base funciona correctamente:
@@ -76,21 +70,29 @@ import numpy as np
 from src.neural_network import NeuralNetwork
 from src.activations import LeakyReLU, Sigmoid
 from src.losses import BinaryCrossEntropy
+from src.optimizers import SGD
 
-# 1. Inicializar la red con función de pérdida
-nn = NeuralNetwork(loss_function=BinaryCrossEntropy())
+# 1. Datos (XOR)
+X = np.array([[0,0], [0,1], [1,0], [1,1]])
+y = np.array([[0], [1], [1], [0]])
 
-# 2. Definir Arquitectura
-# Capa de entrada (2 neuronas) -> Oculta (4 neuronas, LeakyReLU)
+# 2. Configurar Optimizador (NUEVO: Momentum incluido)
+optimizer = SGD(learning_rate=0.1, momentum=0.9)
+
+# 3. Inicializar Red
+nn = NeuralNetwork(loss_function=BinaryCrossEntropy(), optimizer=optimizer)
+
+# 4. Definir Arquitectura
+# Capa oculta: 2 entradas -> 4 neuronas (LeakyReLU)
 nn.add_layer(num_neurons=4, input_size=2, activation=LeakyReLU())
-# Capa de salida (1 neurona, Sigmoid)
+# Capa salida: 1 neurona (Sigmoid)
 nn.add_layer(num_neurons=1, activation=Sigmoid())
 
-# 3. Entrenar
-nn.train(X, y, epochs=10000, learning_rate=0.1)
+# 5. Entrenar (NUEVO: Soporte para batch_size)
+nn.train(X, y, epochs=5000, batch_size=4)
 
-# 4. Predecir
-predicciones = nn.predict(X)
+# 6. Predecir
+print(nn.predict(X))
 ```
 
 ## Integración en Proyectos Reales (Ej. Django/Flask)
@@ -110,43 +112,84 @@ from neural_network import NeuralNetwork
 import numpy as np
 import os
 
-# Cargar el modelo entrenado (Singleton recomendado para producción)
+# CARGA DEL MODELO (Singleton)
+# Asegúrate de que este 'xor_model.pkl' haya sido entrenado con la versión vectorizada
 MODEL_PATH = os.path.join(os.path.dirname(__file__), 'modelos', 'xor_model.pkl')
-ai_model = NeuralNetwork.load_model(MODEL_PATH)
+try:
+    ai_model = NeuralNetwork.load_model(MODEL_PATH)
+except Exception as e:
+    # Es buena práctica manejar si el modelo no carga (ej. versiones incompatibles)
+    print(f"Error cargando el modelo: {e}")
+    ai_model = None
 
 def predecir_view(request):
-    # Suponiendo que recibes datos [0, 1]
+    if ai_model is None:
+        return JsonResponse({'error': 'El modelo no está disponible'}, status=500)
+
+    # 1. Preparar datos
+    # La nueva librería EXIGE una matriz 2D: (Batch_Size, Input_Size)
+    # Aquí Batch_Size = 1
     datos_entrada = np.array([[0, 1]]) 
 
-    # Realizar inferencia
-    prediccion = ai_model.predict(datos_entrada)
+    # 2. Inferencia
+    # Devuelve un np.array de forma (1, 1)
+    prediccion_matriz = ai_model.predict(datos_entrada)
+
+    # 3. Extracción
+    # Accedemos a la fila 0, columna 0 para obtener el escalar
+    valor_predicho = float(prediccion_matriz[0][0])
 
     return JsonResponse({
         'input': [0, 1],
-        'prediccion': float(prediccion[0][0]),
-        'clase': 1 if prediccion > 0.5 else 0
+        'prediccion': valor_predicho,
+        'clase': 1 if valor_predicho > 0.5 else 0
     })
 ```
+
+## Guía Técnica y Solución de Problemas
+Esta sección es crucial para integrar la librería en producción (Django, Flask, FastAPI) y evitar errores comunes.
+
+1. **Formato de Entrada (Input Shapes)**
+Debido a la vectorización, la librería es estricta con las dimensiones. No se aceptan vectores 1D.
+
+- **Incorrecto:** `np.array([0, 1])` -> Forma `(2,)` -> Causará error de dimensiones.
+- **Correcto:** `np.array([[0, 1]])` -> Forma `(1, 2)` -> Matriz de 1 fila y 2 columnas (Batch de tamaño 1).
+
+2. **Formato de Salida (Output)**
+El método `.predict()` siempre devuelve una matriz `(Batch_Size, Neuronas_Salida)`.
+
+```python
+pred = model.predict(np.array([[0, 1]]))
+# Resultado: array([[ 0.98 ]])
+
+# Para obtener el valor escalar (float):
+valor = float(pred[0][0])
+```
+
+3. **Compatibilidad de Modelos (.pkl)**
+Si actualizaste la librería desde una versión anterior (v0.1.0 o previa), **tus modelos antiguos (.pkl) no funcionarán.**
+
+- Causa: La clase `Neuron` fue eliminada y la estructura interna de `Layer` cambió drásticamente.
+- Solución: Debes re-entrenar tus modelos con la nueva versión y guardarlos nuevamente.
 
 ## Estructura del Proyecto
 ```text
 neural_network/
-├── src/                            # Código fuente de la librería
+├── src/                            # Código fuente (Core)
 │   ├── __init__.py
-│   ├── activations.py              # Funciones (Sigmoid, ReLU, LeakyReLU)
-│   ├── layer.py                    # Lógica de capas y conexión de neuronas
-│   ├── losses.py                   # Funciones de costo (MSE, CrossEntropy)
-│   ├── neural_network.py           # Orquestador principal y bucle de entrenamiento
-│   └── neuron.py                   # Lógica base de la neurona (pesos/bias)
+│   ├── activations.py              # Sigmoid, ReLU, Softmax, Linear
+│   ├── layer.py                    # Lógica de capas vectorizadas y Dropout
+│   ├── losses.py                   # MSE, CrossEntropy (Binaria/Categórica)
+│   ├── neural_network.py           # Orquestador y bucle de entrenamiento
+│   └── optimizers.py               # Algoritmos de optimización (SGD)
 ├── tests/                          # Pruebas Unitarias
 │   ├── __init__.py
-│   ├── test_layer.py
+│   ├── test_layer.py               # Test de operaciones matriciales
 │   ├── test_losses.py
-│   └── test_neuron.py
-├── main.py                         # Script de demostración (Problema XOR)
-├── setup.py                        # Configuración de instalación del paquete
+│   └── test_optimizers.py          # Test de actualizaciones de pesos
+├── main.py                         # Script de demostración
 ├── requirements.txt                # Dependencias
-└── .gitignore                      # Archivos ignorados
+└── README.md                       # Documentación
 ```
 
 ## Licencia
