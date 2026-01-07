@@ -33,7 +33,7 @@ Está diseñada para ser escalable, permitiendo crear arquitecturas profundas pa
 
 1. **Clonar el repositorio:**
 ```bash
-git clone [https://github.com/elJulioDev/Neural_Network.git](https://github.com/elJulioDev/Neural_Network.git)
+git clone https://github.com/elJulioDev/Neural_Network.git
 cd neural_network
 ```
 
