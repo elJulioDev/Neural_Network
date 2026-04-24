@@ -1,24 +1,30 @@
 """
-Optimizadores: actualizan los pesos a partir de los gradientes.
+Optimizadores v0.4 — API genérica independiente del tipo de parámetro.
 
-Disponibles:
-- SGD: descenso de gradiente con momentum opcional y Nesterov.
-- AdaGrad: ajusta lr por parámetro acumulando gradientes al cuadrado.
-- RMSprop: variante con media móvil exponencial. Bueno para RNNs.
-- Adam: el caballo de batalla. Combina momentum y RMSprop. Recomendado
-  por defecto para la mayoría de problemas.
+Elimina las fugas de abstracción de v0.3: los optimizadores ya no
+inspeccionan atributos hardcodeados (`weights`, `biases`, etc). Reciben
+tuplas `(layer_id, param_name, param_array, grad_array)` y aplican la
+regla de actualización in-place.
 
-Todos soportan gradient clipping (clip_norm o clip_value) para prevenir
-gradientes que explotan en redes profundas.
+Esto permite capas con cualquier número y nombre de parámetros sin
+tocar el código del optimizer:
+  - Dense: {'weights', 'biases'}
+  - BatchNormalization: {'gamma', 'beta'}
+  - CualquierCapaFutura: {'query', 'key', 'value', 'out_proj', ...}
+
+Todos soportan gradient clipping (clip_norm, clip_value).
 """
-from typing import List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
 
 class Optimizer:
     """
-    Clase base. Subclases implementan `_update_param`.
-    Maneja gradient clipping y la iteración común sobre capas entrenables.
+    Base.
+
+    Subclases implementan `_update(layer_id, name, param, grad)`, que
+    debe modificar `param` IN-PLACE (usando `param += delta` o
+    equivalente).
     """
 
     def __init__(
@@ -32,7 +38,7 @@ class Optimizer:
         self.clip_value = clip_value
         self.iterations = 0
 
-    def _clip_gradient(self, grad: np.ndarray) -> np.ndarray:
+    def _clip(self, grad: np.ndarray) -> np.ndarray:
         if self.clip_value is not None:
             grad = np.clip(grad, -self.clip_value, self.clip_value)
         if self.clip_norm is not None:
@@ -41,27 +47,43 @@ class Optimizer:
                 grad = grad * (self.clip_norm / (norm + 1e-12))
         return grad
 
-    def update(self, layers: List) -> None:
-        """Itera capas entrenables y actualiza pesos y biases."""
-        self.iterations += 1
-        for layer in layers:
-            if not getattr(layer, "trainable", False):
-                continue
-            if not hasattr(layer, "weights"):
-                continue
-            layer_id = id(layer)
-            dw = self._clip_gradient(layer.dweights)
-            db = self._clip_gradient(layer.dbiases)
-            self._update_param(layer_id, "w", layer, "weights", dw)
-            self._update_param(layer_id, "b", layer, "biases", db)
+    def apply_gradients(
+        self,
+        grads_and_params: List[Tuple[int, str, np.ndarray, np.ndarray]],
+    ) -> None:
+        """
+        Aplica gradientes a sus parámetros.
 
-    def _update_param(self, layer_id, key, layer, attr, grad):
+        Args:
+            grads_and_params: lista de tuplas
+                (layer_id, param_name, param_array, grad_array).
+                `param_array` debe ser la referencia al array real de
+                la capa para que la actualización in-place sea efectiva.
+        """
+        self.iterations += 1
+        for layer_id, name, param, grad in grads_and_params:
+            g = self._clip(grad)
+            self._update(layer_id, name, param, g)
+
+    def _update(self, layer_id: int, name: str, param: np.ndarray, grad: np.ndarray) -> None:
         raise NotImplementedError
+
+    def get_config(self) -> Dict[str, Any]:
+        return {
+            "class_name": type(self).__name__,
+            "config": {
+                "learning_rate": self.lr,
+                "clip_norm": self.clip_norm,
+                "clip_value": self.clip_value,
+            },
+        }
+
+    @classmethod
+    def from_config(cls, config: Dict[str, Any]) -> "Optimizer":
+        return cls(**config)
 
 
 class SGD(Optimizer):
-    """SGD con momentum opcional. Soporta Nesterov accelerated gradient."""
-
     def __init__(
         self,
         learning_rate: float = 0.01,
@@ -72,43 +94,48 @@ class SGD(Optimizer):
         super().__init__(learning_rate, **kwargs)
         self.momentum = momentum
         self.nesterov = nesterov
-        self._velocity = {}
+        self._velocity: Dict[Tuple[int, str], np.ndarray] = {}
 
-    def _update_param(self, layer_id, key, layer, attr, grad):
-        cache_key = (layer_id, key)
-        if cache_key not in self._velocity:
-            self._velocity[cache_key] = np.zeros_like(grad)
-        v = self._velocity[cache_key]
+    def _update(self, layer_id, name, param, grad):
+        key = (layer_id, name)
+        if key not in self._velocity:
+            self._velocity[key] = np.zeros_like(grad)
+        v = self._velocity[key]
         v_new = self.momentum * v - self.lr * grad
-        self._velocity[cache_key] = v_new
+        self._velocity[key] = v_new
 
         if self.nesterov:
             update = self.momentum * v_new - self.lr * grad
         else:
             update = v_new
-        setattr(layer, attr, getattr(layer, attr) + update)
+        param += update  # in-place
+
+    def get_config(self):
+        cfg = super().get_config()
+        cfg["config"].update({"momentum": self.momentum, "nesterov": self.nesterov})
+        return cfg
 
 
 class AdaGrad(Optimizer):
-    """Acumula gradientes al cuadrado. lr efectivo decae con el tiempo."""
-
     def __init__(self, learning_rate: float = 0.01, epsilon: float = 1e-7, **kwargs):
         super().__init__(learning_rate, **kwargs)
         self.epsilon = epsilon
-        self._cache = {}
+        self._cache: Dict[Tuple[int, str], np.ndarray] = {}
 
-    def _update_param(self, layer_id, key, layer, attr, grad):
-        cache_key = (layer_id, key)
-        if cache_key not in self._cache:
-            self._cache[cache_key] = np.zeros_like(grad)
-        self._cache[cache_key] += grad ** 2
-        update = -self.lr * grad / (np.sqrt(self._cache[cache_key]) + self.epsilon)
-        setattr(layer, attr, getattr(layer, attr) + update)
+    def _update(self, layer_id, name, param, grad):
+        key = (layer_id, name)
+        if key not in self._cache:
+            self._cache[key] = np.zeros_like(grad)
+        self._cache[key] += grad ** 2
+        param -= self.lr * grad / (np.sqrt(self._cache[key]) + self.epsilon)
+
+    def get_config(self):
+        cfg = super().get_config()
+        cfg["config"]["epsilon"] = self.epsilon
+        return cfg
 
 
 class RMSprop(Optimizer):
-    """Media móvil exponencial de gradientes al cuadrado."""
-
     def __init__(
         self,
         learning_rate: float = 0.001,
@@ -119,25 +146,22 @@ class RMSprop(Optimizer):
         super().__init__(learning_rate, **kwargs)
         self.rho = rho
         self.epsilon = epsilon
-        self._cache = {}
+        self._cache: Dict[Tuple[int, str], np.ndarray] = {}
 
-    def _update_param(self, layer_id, key, layer, attr, grad):
-        cache_key = (layer_id, key)
-        if cache_key not in self._cache:
-            self._cache[cache_key] = np.zeros_like(grad)
-        self._cache[cache_key] = (
-            self.rho * self._cache[cache_key] + (1 - self.rho) * grad ** 2
-        )
-        update = -self.lr * grad / (np.sqrt(self._cache[cache_key]) + self.epsilon)
-        setattr(layer, attr, getattr(layer, attr) + update)
+    def _update(self, layer_id, name, param, grad):
+        key = (layer_id, name)
+        if key not in self._cache:
+            self._cache[key] = np.zeros_like(grad)
+        self._cache[key] = self.rho * self._cache[key] + (1 - self.rho) * grad ** 2
+        param -= self.lr * grad / (np.sqrt(self._cache[key]) + self.epsilon)
+
+    def get_config(self):
+        cfg = super().get_config()
+        cfg["config"].update({"rho": self.rho, "epsilon": self.epsilon})
+        return cfg
 
 
 class Adam(Optimizer):
-    """
-    Adaptive Moment Estimation. Mantiene primer y segundo momento de los
-    gradientes con bias correction. Por defecto la mejor elección general.
-    """
-
     def __init__(
         self,
         learning_rate: float = 0.001,
@@ -150,35 +174,38 @@ class Adam(Optimizer):
         self.beta_1 = beta_1
         self.beta_2 = beta_2
         self.epsilon = epsilon
-        self._m = {}  # primer momento
-        self._v = {}  # segundo momento
+        self._m: Dict[Tuple[int, str], np.ndarray] = {}
+        self._v: Dict[Tuple[int, str], np.ndarray] = {}
 
-    def _update_param(self, layer_id, key, layer, attr, grad):
-        cache_key = (layer_id, key)
-        if cache_key not in self._m:
-            self._m[cache_key] = np.zeros_like(grad)
-            self._v[cache_key] = np.zeros_like(grad)
+    def _update(self, layer_id, name, param, grad):
+        key = (layer_id, name)
+        if key not in self._m:
+            self._m[key] = np.zeros_like(grad)
+            self._v[key] = np.zeros_like(grad)
 
-        self._m[cache_key] = self.beta_1 * self._m[cache_key] + (1 - self.beta_1) * grad
-        self._v[cache_key] = self.beta_2 * self._v[cache_key] + (1 - self.beta_2) * grad ** 2
+        self._m[key] = self.beta_1 * self._m[key] + (1 - self.beta_1) * grad
+        self._v[key] = self.beta_2 * self._v[key] + (1 - self.beta_2) * grad ** 2
 
-        # Bias correction
-        m_hat = self._m[cache_key] / (1 - self.beta_1 ** self.iterations)
-        v_hat = self._v[cache_key] / (1 - self.beta_2 ** self.iterations)
+        m_hat = self._m[key] / (1 - self.beta_1 ** self.iterations)
+        v_hat = self._v[key] / (1 - self.beta_2 ** self.iterations)
 
-        update = -self.lr * m_hat / (np.sqrt(v_hat) + self.epsilon)
-        setattr(layer, attr, getattr(layer, attr) + update)
+        param -= self.lr * m_hat / (np.sqrt(v_hat) + self.epsilon)
+
+    def get_config(self):
+        cfg = super().get_config()
+        cfg["config"].update({
+            "beta_1": self.beta_1,
+            "beta_2": self.beta_2,
+            "epsilon": self.epsilon,
+        })
+        return cfg
 
 
-_OPTIMIZERS = {
-    "sgd": SGD,
-    "adagrad": AdaGrad,
-    "rmsprop": RMSprop,
-    "adam": Adam,
-}
+_OPTIMIZERS = {"sgd": SGD, "adagrad": AdaGrad, "rmsprop": RMSprop, "adam": Adam}
+_OPT_CLASSES = {"SGD": SGD, "AdaGrad": AdaGrad, "RMSprop": RMSprop, "Adam": Adam}
 
 
-def get_optimizer(opt):
+def get_optimizer(opt) -> Optimizer:
     if isinstance(opt, Optimizer):
         return opt
     if isinstance(opt, str):
@@ -186,4 +213,7 @@ def get_optimizer(opt):
         if key not in _OPTIMIZERS:
             raise ValueError(f"Optimizer desconocido: {opt}. Opciones: {list(_OPTIMIZERS.keys())}")
         return _OPTIMIZERS[key]()
+    if isinstance(opt, dict):
+        cls = _OPT_CLASSES[opt["class_name"]]
+        return cls.from_config(opt.get("config", {}))
     raise TypeError(f"Tipo no soportado: {type(opt)}")

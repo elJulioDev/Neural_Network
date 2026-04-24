@@ -1,7 +1,5 @@
-"""
-Métricas de evaluación. Cada métrica recibe (y_pred, y_true) y devuelve
-un escalar. Pensadas para inspeccionar el modelo más allá de la loss.
-"""
+"""Métricas con soporte de serialización."""
+from typing import Dict, Any
 import numpy as np
 
 
@@ -10,6 +8,13 @@ class Metric:
 
     def __call__(self, y_pred: np.ndarray, y_true: np.ndarray) -> float:
         raise NotImplementedError
+
+    def get_config(self) -> Dict[str, Any]:
+        return {"class_name": type(self).__name__, "config": {}}
+
+    @classmethod
+    def from_config(cls, config: Dict[str, Any]) -> "Metric":
+        return cls(**config)
 
 
 class BinaryAccuracy(Metric):
@@ -22,10 +27,11 @@ class BinaryAccuracy(Metric):
         preds = (y_pred >= self.threshold).astype(int)
         return float(np.mean(preds == y_true.astype(int)))
 
+    def get_config(self):
+        return {"class_name": "BinaryAccuracy", "config": {"threshold": self.threshold}}
+
 
 class CategoricalAccuracy(Metric):
-    """Para outputs softmax con etiquetas one-hot."""
-
     name = "categorical_accuracy"
 
     def __call__(self, y_pred, y_true):
@@ -33,8 +39,6 @@ class CategoricalAccuracy(Metric):
 
 
 class SparseCategoricalAccuracy(Metric):
-    """Para outputs softmax con etiquetas como enteros."""
-
     name = "sparse_categorical_accuracy"
 
     def __call__(self, y_pred, y_true):
@@ -56,8 +60,6 @@ class RootMeanSquaredError(Metric):
 
 
 class R2Score(Metric):
-    """Coeficiente de determinación."""
-
     name = "r2"
 
     def __call__(self, y_pred, y_true):
@@ -76,8 +78,17 @@ _METRICS = {
     "r2": R2Score,
 }
 
+_METRIC_CLASSES = {
+    "BinaryAccuracy": BinaryAccuracy,
+    "CategoricalAccuracy": CategoricalAccuracy,
+    "SparseCategoricalAccuracy": SparseCategoricalAccuracy,
+    "MeanAbsoluteError": MeanAbsoluteError,
+    "RootMeanSquaredError": RootMeanSquaredError,
+    "R2Score": R2Score,
+}
 
-def get_metric(metric):
+
+def get_metric(metric) -> Metric:
     if isinstance(metric, Metric):
         return metric
     if isinstance(metric, str):
@@ -85,4 +96,7 @@ def get_metric(metric):
         if key not in _METRICS:
             raise ValueError(f"Métrica desconocida: {metric}. Opciones: {list(_METRICS.keys())}")
         return _METRICS[key]()
+    if isinstance(metric, dict):
+        cls = _METRIC_CLASSES[metric["class_name"]]
+        return cls.from_config(metric.get("config", {}))
     raise TypeError(f"Tipo no soportado: {type(metric)}")

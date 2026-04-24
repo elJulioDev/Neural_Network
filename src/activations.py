@@ -1,120 +1,134 @@
 """
-Funciones de activación.
+Funciones de activación — versión stateless (v0.4+).
 
-Cada activación cachea su salida en `forward()` para que `derivative()`
-no tenga que recomputarla. Esto reduce ~30% el tiempo de backward pass
-en redes profundas.
+Las activaciones ya NO guardan estado en la instancia. El método
+`forward` devuelve `(output, cache)` y `backward(d_output, cache)`
+usa ese cache explícito. Esto permite:
+  - Reutilizar una misma instancia en dos entradas (redes siamesas).
+  - Threads/concurrencia sobre la misma capa.
+  - Gradient check determinista.
 
-Activaciones disponibles: Sigmoid, ReLU, LeakyReLU, ELU, Tanh, Softmax,
-Linear.
+Softmax ahora implementa el Jacobiano-vector completo, por lo que es
+matemáticamente correcto con CUALQUIER función de pérdida. El atajo
+(pred - y) sigue disponible vía `from_logits=True` en las losses.
+
+Activaciones: Sigmoid, ReLU, LeakyReLU, ELU, Tanh, Softmax, Linear.
 """
+from typing import Dict, Tuple, Any
 import numpy as np
 
 
+Cache = Dict[str, Any]
+
+
 class Activation:
-    """Clase base. Subclases deben implementar forward() y derivative()."""
+    """Base class stateless."""
 
-    def __init__(self):
-        self._cache = None
-
-    def forward(self, x: np.ndarray) -> np.ndarray:
+    def forward(self, x: np.ndarray) -> Tuple[np.ndarray, Cache]:
         raise NotImplementedError
 
-    def derivative(self, x: np.ndarray) -> np.ndarray:
+    def backward(self, d_output: np.ndarray, cache: Cache) -> np.ndarray:
         raise NotImplementedError
+
+    def get_config(self) -> Dict[str, Any]:
+        """Config serializable a JSON. Reconstruible con from_config()."""
+        return {"class_name": type(self).__name__, "config": {}}
+
+    @classmethod
+    def from_config(cls, config: Dict[str, Any]) -> "Activation":
+        return cls(**config)
 
 
 class Sigmoid(Activation):
-    def forward(self, x: np.ndarray) -> np.ndarray:
-        # Versión numéricamente estable
+    def forward(self, x):
         out = np.where(
             x >= 0,
             1.0 / (1.0 + np.exp(-x)),
             np.exp(x) / (1.0 + np.exp(x)),
         )
-        self._cache = out
-        return out
+        return out, {"output": out}
 
-    def derivative(self, x: np.ndarray) -> np.ndarray:
-        s = self._cache if self._cache is not None else self.forward(x)
-        return s * (1.0 - s)
+    def backward(self, d_output, cache):
+        s = cache["output"]
+        return d_output * s * (1.0 - s)
 
 
 class ReLU(Activation):
-    def forward(self, x: np.ndarray) -> np.ndarray:
-        self._cache = x
-        return np.maximum(0, x)
+    def forward(self, x):
+        out = np.maximum(0, x)
+        return out, {"mask": (x > 0)}
 
-    def derivative(self, x: np.ndarray) -> np.ndarray:
-        return (x > 0).astype(x.dtype)
+    def backward(self, d_output, cache):
+        return d_output * cache["mask"].astype(d_output.dtype)
 
 
 class LeakyReLU(Activation):
     def __init__(self, alpha: float = 0.01):
-        super().__init__()
         self.alpha = alpha
 
-    def forward(self, x: np.ndarray) -> np.ndarray:
-        self._cache = x
-        return np.where(x > 0, x, x * self.alpha)
+    def forward(self, x):
+        out = np.where(x > 0, x, x * self.alpha)
+        return out, {"positive_mask": x > 0}
 
-    def derivative(self, x: np.ndarray) -> np.ndarray:
-        return np.where(x > 0, 1.0, self.alpha)
+    def backward(self, d_output, cache):
+        grad = np.where(cache["positive_mask"], 1.0, self.alpha)
+        return d_output * grad
+
+    def get_config(self):
+        return {"class_name": "LeakyReLU", "config": {"alpha": self.alpha}}
 
 
 class ELU(Activation):
-    """Exponential Linear Unit. Más suave que ReLU, mejor convergencia."""
-
     def __init__(self, alpha: float = 1.0):
-        super().__init__()
         self.alpha = alpha
 
-    def forward(self, x: np.ndarray) -> np.ndarray:
+    def forward(self, x):
         out = np.where(x > 0, x, self.alpha * (np.exp(np.minimum(x, 0)) - 1))
-        self._cache = (x, out)
-        return out
+        return out, {"x": x, "output": out}
 
-    def derivative(self, x: np.ndarray) -> np.ndarray:
-        _, out = self._cache
-        return np.where(x > 0, 1.0, out + self.alpha)
+    def backward(self, d_output, cache):
+        x, out = cache["x"], cache["output"]
+        grad = np.where(x > 0, 1.0, out + self.alpha)
+        return d_output * grad
+
+    def get_config(self):
+        return {"class_name": "ELU", "config": {"alpha": self.alpha}}
 
 
 class Tanh(Activation):
-    def forward(self, x: np.ndarray) -> np.ndarray:
+    def forward(self, x):
         out = np.tanh(x)
-        self._cache = out
-        return out
+        return out, {"output": out}
 
-    def derivative(self, x: np.ndarray) -> np.ndarray:
-        t = self._cache if self._cache is not None else self.forward(x)
-        return 1.0 - t ** 2
+    def backward(self, d_output, cache):
+        t = cache["output"]
+        return d_output * (1.0 - t ** 2)
 
 
 class Softmax(Activation):
     """
-    Softmax para clasificación multiclase. Se asume uso conjunto con
-    CategoricalCrossEntropy, que aplica el truco (pred - y) en su gradiente.
-    Por eso `derivative()` retorna 1 (identidad).
+    Softmax con Jacobiano-vector completo. Matemáticamente correcto con
+    cualquier pérdida. Para la combinación Softmax + CategoricalCrossEntropy,
+    usa `from_logits=True` en la loss para el atajo numéricamente estable.
     """
 
-    def forward(self, x: np.ndarray) -> np.ndarray:
+    def forward(self, x):
         exp_vals = np.exp(x - np.max(x, axis=1, keepdims=True))
         out = exp_vals / np.sum(exp_vals, axis=1, keepdims=True)
-        self._cache = out
-        return out
+        return out, {"output": out}
 
-    def derivative(self, x: np.ndarray) -> np.ndarray:
-        return np.ones_like(x)
+    def backward(self, d_output, cache):
+        s = cache["output"]
+        dot = np.sum(d_output * s, axis=1, keepdims=True)
+        return s * (d_output - dot)
 
 
 class Linear(Activation):
-    """Identidad. Para regresión en la capa de salida."""
+    def forward(self, x):
+        return x, {}
 
-    def forward(self, x: np.ndarray) -> np.ndarray:
-        return x
-
-    def derivative(self, x: np.ndarray) -> np.ndarray:
-        return np.ones_like(x)
+    def backward(self, d_output, cache):
+        return d_output
 
 
 _ACTIVATIONS = {
@@ -127,9 +141,18 @@ _ACTIVATIONS = {
     "linear": Linear,
 }
 
+_ACTIVATION_CLASSES = {
+    "Sigmoid": Sigmoid,
+    "ReLU": ReLU,
+    "LeakyReLU": LeakyReLU,
+    "ELU": ELU,
+    "Tanh": Tanh,
+    "Softmax": Softmax,
+    "Linear": Linear,
+}
 
-def get_activation(activation):
-    """Resuelve activación desde string o instancia."""
+
+def get_activation(activation) -> Activation:
     if isinstance(activation, Activation):
         return activation
     if isinstance(activation, str):
@@ -140,4 +163,9 @@ def get_activation(activation):
                 f"Opciones: {list(_ACTIVATIONS.keys())}"
             )
         return _ACTIVATIONS[key]()
+    if isinstance(activation, dict):
+        name = activation["class_name"]
+        if name not in _ACTIVATION_CLASSES:
+            raise ValueError(f"Activación desconocida en config: {name}")
+        return _ACTIVATION_CLASSES[name].from_config(activation.get("config", {}))
     raise TypeError(f"Tipo no soportado: {type(activation)}")
