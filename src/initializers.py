@@ -1,67 +1,70 @@
-"""
-Inicializadores de pesos para redes neuronales.
-
-Cada inicializador implementa una estrategia matemática para asignar
-los valores iniciales de los pesos. Una buena inicialización es CRÍTICA
-para evitar problemas de gradientes que explotan o desaparecen.
-"""
+"""Inicializadores con soporte para serialización JSON."""
+from typing import Dict, Any, Tuple, Optional
 import numpy as np
-from typing import Tuple
 
 
 class Initializer:
-    """Clase base para todos los inicializadores."""
-
-    def __call__(self, shape: Tuple[int, int]) -> np.ndarray:
+    def __call__(self, shape: Tuple[int, ...]) -> np.ndarray:
         raise NotImplementedError
+
+    def get_config(self) -> Dict[str, Any]:
+        return {"class_name": type(self).__name__, "config": {}}
+
+    @classmethod
+    def from_config(cls, config: Dict[str, Any]) -> "Initializer":
+        return cls(**config)
 
 
 class HeNormal(Initializer):
-    """
-    Inicialización de He (Kaiming) para activaciones ReLU/LeakyReLU.
-    Var(W) = 2 / fan_in
-    """
+    def __init__(self, seed: Optional[int] = None):
+        self.seed = seed
 
-    def __call__(self, shape: Tuple[int, int]) -> np.ndarray:
+    def __call__(self, shape):
+        rng = np.random.default_rng(self.seed)
         fan_in = shape[0]
-        return np.random.randn(*shape) * np.sqrt(2.0 / fan_in)
+        return rng.standard_normal(shape) * np.sqrt(2.0 / fan_in)
+
+    def get_config(self):
+        return {"class_name": "HeNormal", "config": {"seed": self.seed}}
 
 
 class XavierNormal(Initializer):
-    """
-    Inicialización de Xavier/Glorot para activaciones tanh/sigmoid.
-    Var(W) = 2 / (fan_in + fan_out)
-    """
+    def __init__(self, seed: Optional[int] = None):
+        self.seed = seed
 
-    def __call__(self, shape: Tuple[int, int]) -> np.ndarray:
+    def __call__(self, shape):
+        rng = np.random.default_rng(self.seed)
         fan_in, fan_out = shape
-        return np.random.randn(*shape) * np.sqrt(2.0 / (fan_in + fan_out))
+        return rng.standard_normal(shape) * np.sqrt(2.0 / (fan_in + fan_out))
+
+    def get_config(self):
+        return {"class_name": "XavierNormal", "config": {"seed": self.seed}}
 
 
 class XavierUniform(Initializer):
-    """Variante uniforme de Xavier/Glorot."""
+    def __init__(self, seed: Optional[int] = None):
+        self.seed = seed
 
-    def __call__(self, shape: Tuple[int, int]) -> np.ndarray:
+    def __call__(self, shape):
+        rng = np.random.default_rng(self.seed)
         fan_in, fan_out = shape
         limit = np.sqrt(6.0 / (fan_in + fan_out))
-        return np.random.uniform(-limit, limit, size=shape)
+        return rng.uniform(-limit, limit, size=shape)
+
+    def get_config(self):
+        return {"class_name": "XavierUniform", "config": {"seed": self.seed}}
 
 
 class Zeros(Initializer):
-    """Inicializa todo a cero. Usado típicamente para biases."""
-
-    def __call__(self, shape: Tuple[int, int]) -> np.ndarray:
+    def __call__(self, shape):
         return np.zeros(shape)
 
 
 class Ones(Initializer):
-    """Inicializa todo a uno. Usado para parámetros gamma de BatchNorm."""
-
-    def __call__(self, shape: Tuple[int, int]) -> np.ndarray:
+    def __call__(self, shape):
         return np.ones(shape)
 
 
-# Mapping para usar strings (estilo Keras)
 _INITIALIZERS = {
     "he_normal": HeNormal,
     "he": HeNormal,
@@ -74,9 +77,16 @@ _INITIALIZERS = {
     "ones": Ones,
 }
 
+_INIT_CLASSES = {
+    "HeNormal": HeNormal,
+    "XavierNormal": XavierNormal,
+    "XavierUniform": XavierUniform,
+    "Zeros": Zeros,
+    "Ones": Ones,
+}
 
-def get_initializer(initializer):
-    """Resuelve un inicializador desde string o instancia."""
+
+def get_initializer(initializer) -> Initializer:
     if isinstance(initializer, Initializer):
         return initializer
     if isinstance(initializer, str):
@@ -87,4 +97,7 @@ def get_initializer(initializer):
                 f"Opciones: {list(_INITIALIZERS.keys())}"
             )
         return _INITIALIZERS[key]()
+    if isinstance(initializer, dict):
+        cls = _INIT_CLASSES[initializer["class_name"]]
+        return cls.from_config(initializer.get("config", {}))
     raise TypeError(f"Tipo no soportado: {type(initializer)}")
