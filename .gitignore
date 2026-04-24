@@ -1,11 +1,27 @@
-# Python caches
+# Python
 __pycache__/
 *.py[cod]
+*.egg-info/
+*.egg
+build/
+dist/
 
-# Entornos virtuales
+# Virtual envs
 venv/
 env/
 .env
+.venv/
 
-# Configuración de entorno
-.env
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Testing / coverage
+.coverage
+.pytest_cache/
+htmlcov/
+
+# Modelos guardados
+*.pkl
+*.npz
