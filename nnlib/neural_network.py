@@ -29,6 +29,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
+from .activations import Activation
 from .callbacks import Callback, History
 from .layer import BaseLayer, BatchNormalization, Dropout, Layer, layer_from_config
 from .losses import Loss, get_loss
@@ -100,7 +101,7 @@ class NeuralNetwork:
         self,
         num_neurons: int,
         input_size: Optional[int] = None,
-        activation=None,
+        activation: Optional[Union[str, Activation]] = None,
         **kwargs,
     ) -> "NeuralNetwork":
         """Legacy add_layer() for simple sequential construction."""
@@ -204,7 +205,7 @@ class NeuralNetwork:
         return grads_per_layer
 
     def _collect_grads_and_params(
-        self, grads_per_layer
+        self, grads_per_layer: List[Tuple[BaseLayer, Dict[str, np.ndarray]]]
     ) -> List[Tuple[int, str, np.ndarray, np.ndarray]]:
         """
         Collects tuples (layer_id, param_name, param_array, grad_array)
@@ -364,13 +365,26 @@ class NeuralNetwork:
 
         return history.history
 
-    def train(self, x, y, epochs=1000, batch_size=32, verbose=1):
+    def train(
+        self,
+        x: np.ndarray,
+        y: np.ndarray,
+        epochs: int = 1000,
+        batch_size: int = 32,
+        verbose: int = 1,
+    ) -> Dict[str, list]:
         """Legacy API."""
         if not self._compiled and self.loss_function is not None and self.optimizer is not None:
             self._compiled = True
         return self.fit(x, y, epochs=epochs, batch_size=batch_size, verbose=verbose)
 
-    def evaluate(self, x, y, batch_size: int = 32, verbose: int = 1) -> Dict[str, float]:
+    def evaluate(
+        self,
+        x: np.ndarray,
+        y: np.ndarray,
+        batch_size: int = 32,
+        verbose: int = 1,
+    ) -> Dict[str, float]:
         """Evaluates the model on data, returns loss and metrics."""
         self._ensure_ready()
         steps = max(1, (len(x) + batch_size - 1) // batch_size)

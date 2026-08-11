@@ -1,5 +1,5 @@
 """Initializers with JSON serialization support."""
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
 
@@ -27,13 +27,13 @@ class HeNormal(Initializer):
     def __init__(self, seed: Optional[int] = None):
         self.seed = seed
 
-    def __call__(self, shape):
+    def __call__(self, shape: Tuple[int, ...]) -> np.ndarray:
         """Generates He Normal samples."""
         rng = np.random.default_rng(self.seed)
         fan_in = shape[0]
         return rng.standard_normal(shape) * np.sqrt(2.0 / fan_in)
 
-    def get_config(self):
+    def get_config(self) -> Dict[str, Any]:
         """Returns HeNormal config."""
         return {"class_name": "HeNormal", "config": {"seed": self.seed}}
 
@@ -44,13 +44,13 @@ class XavierNormal(Initializer):
     def __init__(self, seed: Optional[int] = None):
         self.seed = seed
 
-    def __call__(self, shape):
+    def __call__(self, shape: Tuple[int, ...]) -> np.ndarray:
         """Generates Xavier Normal samples."""
         rng = np.random.default_rng(self.seed)
         fan_in, fan_out = shape
         return rng.standard_normal(shape) * np.sqrt(2.0 / (fan_in + fan_out))
 
-    def get_config(self):
+    def get_config(self) -> Dict[str, Any]:
         """Returns XavierNormal config."""
         return {"class_name": "XavierNormal", "config": {"seed": self.seed}}
 
@@ -61,14 +61,14 @@ class XavierUniform(Initializer):
     def __init__(self, seed: Optional[int] = None):
         self.seed = seed
 
-    def __call__(self, shape):
+    def __call__(self, shape: Tuple[int, ...]) -> np.ndarray:
         """Generates Xavier Uniform samples."""
         rng = np.random.default_rng(self.seed)
         fan_in, fan_out = shape
         limit = np.sqrt(6.0 / (fan_in + fan_out))
         return rng.uniform(-limit, limit, size=shape)
 
-    def get_config(self):
+    def get_config(self) -> Dict[str, Any]:
         """Returns XavierUniform config."""
         return {"class_name": "XavierUniform", "config": {"seed": self.seed}}
 
@@ -76,7 +76,7 @@ class XavierUniform(Initializer):
 class Zeros(Initializer):
     """Returns an array of zeros."""
 
-    def __call__(self, shape):
+    def __call__(self, shape: Tuple[int, ...]) -> np.ndarray:
         """Returns zeros."""
         return np.zeros(shape)
 
@@ -84,7 +84,7 @@ class Zeros(Initializer):
 class Ones(Initializer):
     """Returns an array of ones."""
 
-    def __call__(self, shape):
+    def __call__(self, shape: Tuple[int, ...]) -> np.ndarray:
         """Returns ones."""
         return np.ones(shape)
 
@@ -110,7 +110,7 @@ _INIT_CLASSES = {
 }
 
 
-def get_initializer(initializer) -> Initializer:
+def get_initializer(initializer: Union[str, Dict[str, Any], Initializer]) -> Initializer:
     """Resolves an initializer from string, dict, or instance."""
     if isinstance(initializer, Initializer):
         return initializer

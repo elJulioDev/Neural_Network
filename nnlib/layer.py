@@ -25,12 +25,12 @@ Key design:
 
 Layers: Dense (alias Layer), Dropout, BatchNormalization.
 """
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
 
 from .activations import Activation, get_activation
-from .initializers import get_initializer
+from .initializers import Initializer, get_initializer
 from .regularizers import Regularizer, get_regularizer
 
 Cache = Dict[str, Any]
@@ -114,9 +114,9 @@ class Layer(BaseLayer):
         self,
         n_neurons: int,
         input_size: Optional[int] = None,
-        activation="linear",
-        kernel_initializer="he_normal",
-        bias_initializer="zeros",
+        activation: Union[str, Activation] = "linear",
+        kernel_initializer: Union[str, "Initializer"] = "he_normal",
+        bias_initializer: Union[str, "Initializer"] = "zeros",
         kernel_regularizer: Optional[Regularizer] = None,
     ):
         self.n_neurons = n_neurons
@@ -133,7 +133,7 @@ class Layer(BaseLayer):
         if input_size is not None:
             self.build((None, input_size))
 
-    def build(self, input_shape):
+    def build(self, input_shape: Tuple[Optional[int], int]) -> Tuple[Optional[int], int]:
         """Initializes weights and biases from input shape."""
         input_size = input_shape[-1]
         if input_size is None:
@@ -147,7 +147,7 @@ class Layer(BaseLayer):
         self._built = True
         return self.output_shape
 
-    def forward(self, inputs, training=True):
+    def forward(self, inputs: np.ndarray, training: bool = True) -> Tuple[np.ndarray, Cache]:
         """Computes z = x @ W + b, then applies activation."""
         if not self._built:
             self.build((None, inputs.shape[1]))
@@ -162,7 +162,7 @@ class Layer(BaseLayer):
         cache = {"inputs": inputs, "z": z, "activation_cache": act_cache}
         return output, cache
 
-    def backward(self, d_output, cache):
+    def backward(self, d_output: np.ndarray, cache: Cache) -> Tuple[np.ndarray, ParamDict]:
         """Computes gradients for weights, biases, and input."""
         # Propagate through activation first (using the activation cache)
         d_z = self.activation.backward(d_output, cache["activation_cache"])
@@ -179,17 +179,17 @@ class Layer(BaseLayer):
         grads = {"weights": dweights, "biases": dbiases}
         return d_input, grads
 
-    def parameters(self):
+    def parameters(self) -> ParamDict:
         """Returns trainable parameters: weights and biases."""
         return {"weights": self.weights, "biases": self.biases}
 
-    def regularization_loss(self):
+    def regularization_loss(self) -> float:
         """Returns L1/L2 regularization loss on weights."""
         if self.kernel_regularizer is None:
             return 0.0
         return self.kernel_regularizer.loss(self.weights)
 
-    def get_config(self):
+    def get_config(self) -> Dict[str, Any]:
         """Returns layer config for JSON serialization."""
         return {
             "class_name": "Dense",
@@ -225,13 +225,13 @@ class Dropout(BaseLayer):
             raise ValueError("rate must be in [0, 1).")
         self.rate = rate
 
-    def build(self, input_shape):
+    def build(self, input_shape: Tuple[Optional[int], int]) -> Tuple[Optional[int], int]:
         """Stores input shape (no weights to initialize)."""
         self.input_shape = input_shape
         self.output_shape = input_shape
         return input_shape
 
-    def forward(self, inputs, training=True):
+    def forward(self, inputs: np.ndarray, training: bool = True) -> Tuple[np.ndarray, Cache]:
         """Applies dropout mask during training, identity during inference."""
         if not training or self.rate == 0.0:
             return inputs, {"mask": None}
@@ -239,14 +239,14 @@ class Dropout(BaseLayer):
         mask = (np.random.default_rng().random(inputs.shape) < keep_prob) / keep_prob
         return inputs * mask, {"mask": mask}
 
-    def backward(self, d_output, cache):
+    def backward(self, d_output: np.ndarray, cache: Cache) -> Tuple[np.ndarray, ParamDict]:
         """Passes gradient through the mask."""
         mask = cache["mask"]
         if mask is None:
             return d_output, {}
         return d_output * mask, {}
 
-    def get_config(self):
+    def get_config(self) -> Dict[str, Any]:
         """Returns Dropout config."""
         return {"class_name": "Dropout", "config": {"rate": self.rate}}
 
@@ -281,7 +281,7 @@ class BatchNormalization(BaseLayer):
         if n_features is not None:
             self.build((None, n_features))
 
-    def build(self, input_shape):
+    def build(self, input_shape: Tuple[Optional[int], int]) -> Tuple[Optional[int], int]:
         """Initializes gamma, beta, running_mean, running_var."""
         n = input_shape[-1]
         if n is None:
@@ -296,7 +296,7 @@ class BatchNormalization(BaseLayer):
         self._built = True
         return input_shape
 
-    def forward(self, inputs, training=True):
+    def forward(self, inputs: np.ndarray, training: bool = True) -> Tuple[np.ndarray, Cache]:
         """Normalizes inputs and applies gamma/beta. Updates running stats in training."""
         if not self._built:
             self.build((None, inputs.shape[1]))
@@ -324,7 +324,7 @@ class BatchNormalization(BaseLayer):
             cache = {}
         return out, cache
 
-    def backward(self, d_output, cache):
+    def backward(self, d_output: np.ndarray, cache: Cache) -> Tuple[np.ndarray, ParamDict]:
         """Computes gradients for gamma and beta."""
         x_hat = cache["x_hat"]
         inv_std = cache["inv_std"]
@@ -341,15 +341,15 @@ class BatchNormalization(BaseLayer):
         )
         return dx, {"gamma": dgamma, "beta": dbeta}
 
-    def parameters(self):
+    def parameters(self) -> ParamDict:
         """Returns trainable parameters: gamma and beta."""
         return {"gamma": self.gamma, "beta": self.beta}
 
-    def non_trainable_state(self):
+    def non_trainable_state(self) -> ParamDict:
         """Returns running statistics (persisted but not trained)."""
         return {"running_mean": self.running_mean, "running_var": self.running_var}
 
-    def get_config(self):
+    def get_config(self) -> Dict[str, Any]:
         """Returns BatchNormalization config."""
         return {
             "class_name": "BatchNormalization",

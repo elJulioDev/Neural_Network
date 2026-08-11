@@ -14,7 +14,7 @@ mathematically correct with ANY loss function. The shortcut
 
 Activations: Sigmoid, ReLU, LeakyReLU, ELU, Tanh, Softmax, Linear.
 """
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, Union
 
 import numpy as np
 
@@ -45,7 +45,7 @@ class Activation:
 class Sigmoid(Activation):
     """Sigmoid activation: 1 / (1 + exp(-x)). Numerically stable."""
 
-    def forward(self, x):
+    def forward(self, x: np.ndarray) -> Tuple[np.ndarray, Cache]:
         """Applies sigmoid element-wise."""
         out = np.where(
             x >= 0,
@@ -54,7 +54,7 @@ class Sigmoid(Activation):
         )
         return out, {"output": out}
 
-    def backward(self, d_output, cache):
+    def backward(self, d_output: np.ndarray, cache: Cache) -> np.ndarray:
         """Returns d_output * sigmoid * (1 - sigmoid)."""
         s = cache["output"]
         return d_output * s * (1.0 - s)
@@ -63,12 +63,12 @@ class Sigmoid(Activation):
 class ReLU(Activation):
     """ReLU activation: max(0, x)."""
 
-    def forward(self, x):
+    def forward(self, x: np.ndarray) -> Tuple[np.ndarray, Cache]:
         """Applies ReLU element-wise."""
         out = np.maximum(0, x)
         return out, {"mask": (x > 0)}
 
-    def backward(self, d_output, cache):
+    def backward(self, d_output: np.ndarray, cache: Cache) -> np.ndarray:
         """Returns d_output where x > 0, else 0."""
         return d_output * cache["mask"].astype(d_output.dtype)
 
@@ -79,17 +79,17 @@ class LeakyReLU(Activation):
     def __init__(self, alpha: float = 0.01):
         self.alpha = alpha
 
-    def forward(self, x):
+    def forward(self, x: np.ndarray) -> Tuple[np.ndarray, Cache]:
         """Applies LeakyReLU element-wise."""
         out = np.where(x > 0, x, x * self.alpha)
         return out, {"positive_mask": x > 0}
 
-    def backward(self, d_output, cache):
+    def backward(self, d_output: np.ndarray, cache: Cache) -> np.ndarray:
         """Returns d_output scaled by alpha where x <= 0."""
         grad = np.where(cache["positive_mask"], 1.0, self.alpha)
         return d_output * grad
 
-    def get_config(self):
+    def get_config(self) -> Dict[str, Any]:
         """Returns LeakyReLU config."""
         return {"class_name": "LeakyReLU", "config": {"alpha": self.alpha}}
 
@@ -100,18 +100,18 @@ class ELU(Activation):
     def __init__(self, alpha: float = 1.0):
         self.alpha = alpha
 
-    def forward(self, x):
+    def forward(self, x: np.ndarray) -> Tuple[np.ndarray, Cache]:
         """Applies ELU element-wise."""
         out = np.where(x > 0, x, self.alpha * (np.exp(np.minimum(x, 0)) - 1))
         return out, {"x": x, "output": out}
 
-    def backward(self, d_output, cache):
+    def backward(self, d_output: np.ndarray, cache: Cache) -> np.ndarray:
         """Returns d_output scaled by (output + alpha) where x <= 0."""
         x, out = cache["x"], cache["output"]
         grad = np.where(x > 0, 1.0, out + self.alpha)
         return d_output * grad
 
-    def get_config(self):
+    def get_config(self) -> Dict[str, Any]:
         """Returns ELU config."""
         return {"class_name": "ELU", "config": {"alpha": self.alpha}}
 
@@ -119,12 +119,12 @@ class ELU(Activation):
 class Tanh(Activation):
     """Tanh activation: (exp(x) - exp(-x)) / (exp(x) + exp(-x))."""
 
-    def forward(self, x):
+    def forward(self, x: np.ndarray) -> Tuple[np.ndarray, Cache]:
         """Applies tanh element-wise."""
         out = np.tanh(x)
         return out, {"output": out}
 
-    def backward(self, d_output, cache):
+    def backward(self, d_output: np.ndarray, cache: Cache) -> np.ndarray:
         """Returns d_output * (1 - tanh^2)."""
         t = cache["output"]
         return d_output * (1.0 - t ** 2)
@@ -137,13 +137,13 @@ class Softmax(Activation):
     use `from_logits=True` in the loss for a numerically stable shortcut.
     """
 
-    def forward(self, x):
+    def forward(self, x: np.ndarray) -> Tuple[np.ndarray, Cache]:
         """Applies softmax with numerical stability."""
         exp_vals = np.exp(x - np.max(x, axis=1, keepdims=True))
         out = exp_vals / np.sum(exp_vals, axis=1, keepdims=True)
         return out, {"output": out}
 
-    def backward(self, d_output, cache):
+    def backward(self, d_output: np.ndarray, cache: Cache) -> np.ndarray:
         """Full Jacobian-vector product: s * (d_output - dot(d_output, s))."""
         s = cache["output"]
         dot = np.sum(d_output * s, axis=1, keepdims=True)
@@ -153,11 +153,11 @@ class Softmax(Activation):
 class Linear(Activation):
     """Identity activation (no-op)."""
 
-    def forward(self, x):
+    def forward(self, x: np.ndarray) -> Tuple[np.ndarray, Cache]:
         """Returns x unchanged."""
         return x, {}
 
-    def backward(self, d_output, cache):
+    def backward(self, d_output: np.ndarray, cache: Cache) -> np.ndarray:
         """Returns d_output unchanged."""
         return d_output
 
@@ -183,7 +183,7 @@ _ACTIVATION_CLASSES = {
 }
 
 
-def get_activation(activation) -> Activation:
+def get_activation(activation: Union[str, Dict[str, Any], Activation]) -> Activation:
     """Resolves an activation from string, dict, or instance."""
     if isinstance(activation, Activation):
         return activation

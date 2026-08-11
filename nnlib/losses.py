@@ -18,7 +18,7 @@ the loss expects to receive.
 Available: MSE, MAE, Huber, BinaryCrossEntropy,
 CategoricalCrossEntropy, SparseCategoricalCrossEntropy.
 """
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 import numpy as np
 
@@ -68,11 +68,11 @@ class Loss:
 class MSE(Loss):
     """Mean Squared Error: mean((y - output)^2)."""
 
-    def calculate(self, output, y):
+    def calculate(self, output: np.ndarray, y: np.ndarray) -> float:
         """Returns MSE as a float."""
         return float(np.mean((y - output) ** 2))
 
-    def derivative(self, output, y):
+    def derivative(self, output: np.ndarray, y: np.ndarray) -> np.ndarray:
         """Returns 2 * (output - y) / N."""
         return 2.0 * (output - y) / y.size
 
@@ -80,11 +80,11 @@ class MSE(Loss):
 class MAE(Loss):
     """Mean Absolute Error: mean(|y - output|)."""
 
-    def calculate(self, output, y):
+    def calculate(self, output: np.ndarray, y: np.ndarray) -> float:
         """Returns MAE as a float."""
         return float(np.mean(np.abs(y - output)))
 
-    def derivative(self, output, y):
+    def derivative(self, output: np.ndarray, y: np.ndarray) -> np.ndarray:
         """Returns sign(output - y) / N."""
         return np.sign(output - y) / y.size
 
@@ -95,7 +95,7 @@ class Huber(Loss):
     def __init__(self, delta: float = 1.0):
         self.delta = delta
 
-    def calculate(self, output, y):
+    def calculate(self, output: np.ndarray, y: np.ndarray) -> float:
         """Returns Huber loss as a float."""
         error = output - y
         abs_err = np.abs(error)
@@ -103,14 +103,14 @@ class Huber(Loss):
         lin = abs_err - quad
         return float(np.mean(0.5 * quad ** 2 + self.delta * lin))
 
-    def derivative(self, output, y):
+    def derivative(self, output: np.ndarray, y: np.ndarray) -> np.ndarray:
         """Returns gradient: error if |error| <= delta, else delta * sign(error)."""
         error = output - y
         abs_err = np.abs(error)
         grad = np.where(abs_err <= self.delta, error, self.delta * np.sign(error))
         return grad / y.size
 
-    def get_config(self):
+    def get_config(self) -> Dict[str, Any]:
         """Returns Huber config."""
         return {"class_name": "Huber", "config": {"delta": self.delta}}
 
@@ -138,14 +138,14 @@ class BinaryCrossEntropy(Loss):
         p = np.clip(output, _EPSILON, 1 - _EPSILON)
         return float(-np.mean(y * np.log(p) + (1 - y) * np.log(1 - p)))
 
-    def derivative(self, output, y):
+    def derivative(self, output: np.ndarray, y: np.ndarray) -> np.ndarray:
         """Returns gradient: (sigmoid(x) - y)/N if from_logits, else (p-y)/(p*(1-p))/N."""
         if self.from_logits:
             return (_sigmoid_stable(output) - y) / y.size
         p = np.clip(output, _EPSILON, 1 - _EPSILON)
         return (p - y) / (p * (1 - p)) / y.size
 
-    def get_config(self):
+    def get_config(self) -> Dict[str, Any]:
         """Returns BinaryCrossEntropy config."""
         return {"class_name": "BinaryCrossEntropy", "config": {"from_logits": self.from_logits}}
 
@@ -164,8 +164,8 @@ class CategoricalCrossEntropy(Loss):
     def __init__(self, from_logits: bool = False):
         self.from_logits = from_logits
 
-    def calculate(self, output, y):
-        """Computes CCE. Uses log-softmax if from_logits."""
+    def calculate(self, output: np.ndarray, y: np.ndarray) -> float:
+        """Computes BCE. Uses stable log-sum-exp if from_logits."""
         if self.from_logits:
             return float(-np.sum(y * _log_softmax_stable(output)) / y.shape[0])
         p = np.clip(output, _EPSILON, 1 - _EPSILON)
@@ -181,7 +181,7 @@ class CategoricalCrossEntropy(Loss):
         p = np.clip(output, _EPSILON, 1 - _EPSILON)
         return -(y / p) / y.shape[0]
 
-    def get_config(self):
+    def get_config(self) -> Dict[str, Any]:
         """Returns CategoricalCrossEntropy config."""
         return {"class_name": "CategoricalCrossEntropy", "config": {"from_logits": self.from_logits}}
 
@@ -192,7 +192,7 @@ class SparseCategoricalCrossEntropy(Loss):
     def __init__(self, from_logits: bool = False):
         self.from_logits = from_logits
 
-    def calculate(self, output, y):
+    def calculate(self, output: np.ndarray, y: np.ndarray) -> float:
         """Computes sparse CCE."""
         m = y.shape[0]
         y_idx = y.flatten().astype(int)
@@ -202,7 +202,7 @@ class SparseCategoricalCrossEntropy(Loss):
         p = np.clip(output, _EPSILON, 1 - _EPSILON)
         return float(-np.mean(np.log(p[np.arange(m), y_idx])))
 
-    def derivative(self, output, y):
+    def derivative(self, output: np.ndarray, y: np.ndarray) -> np.ndarray:
         """Returns gradient for sparse CCE."""
         m = y.shape[0]
         y_idx = y.flatten().astype(int)
@@ -215,7 +215,7 @@ class SparseCategoricalCrossEntropy(Loss):
         grad[np.arange(m), y_idx] = -1.0 / p[np.arange(m), y_idx]
         return grad / m
 
-    def get_config(self):
+    def get_config(self) -> Dict[str, Any]:
         """Returns SparseCategoricalCrossEntropy config."""
         return {"class_name": "SparseCategoricalCrossEntropy", "config": {"from_logits": self.from_logits}}
 
@@ -243,7 +243,7 @@ _LOSS_CLASSES = {
 }
 
 
-def get_loss(loss) -> Loss:
+def get_loss(loss: Union[str, Dict[str, Any], Loss]) -> Loss:
     """Resolves a loss from string, dict, or instance."""
     if isinstance(loss, Loss):
         return loss

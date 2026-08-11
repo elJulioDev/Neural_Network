@@ -12,7 +12,7 @@ touching the optimizer code:
 
 All support gradient clipping (clip_norm, clip_value).
 """
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -65,6 +65,7 @@ class Optimizer:
             self._update(layer_id, name, param, g)
 
     def _update(self, layer_id: int, name: str, param: np.ndarray, grad: np.ndarray) -> None:
+        """Applies a single parameter update. Must modify param in-place."""
         raise NotImplementedError
 
     def get_config(self) -> Dict[str, Any]:
@@ -84,6 +85,8 @@ class Optimizer:
 
 
 class SGD(Optimizer):
+    """Stochastic Gradient Descent with optional momentum and Nesterov."""
+
     def __init__(
         self,
         learning_rate: float = 0.01,
@@ -96,7 +99,7 @@ class SGD(Optimizer):
         self.nesterov = nesterov
         self._velocity: Dict[Tuple[int, str], np.ndarray] = {}
 
-    def _update(self, layer_id, name, param, grad):
+    def _update(self, layer_id: int, name: str, param: np.ndarray, grad: np.ndarray) -> None:
         key = (layer_id, name)
         if key not in self._velocity:
             self._velocity[key] = np.zeros_like(grad)
@@ -110,26 +113,28 @@ class SGD(Optimizer):
             update = v_new
         param += update  # in-place
 
-    def get_config(self):
+    def get_config(self) -> Dict[str, Any]:
         """Returns SGD config."""
         cfg = super().get_config()
         return cfg
 
 
 class AdaGrad(Optimizer):
+    """AdaGrad optimizer with per-parameter learning rates."""
+
     def __init__(self, learning_rate: float = 0.01, epsilon: float = 1e-7, **kwargs):
         super().__init__(learning_rate, **kwargs)
         self.epsilon = epsilon
         self._cache: Dict[Tuple[int, str], np.ndarray] = {}
 
-    def _update(self, layer_id, name, param, grad):
+    def _update(self, layer_id: int, name: str, param: np.ndarray, grad: np.ndarray) -> None:
         key = (layer_id, name)
         if key not in self._cache:
             self._cache[key] = np.zeros_like(grad)
         self._cache[key] += grad ** 2
         param -= self.lr * grad / (np.sqrt(self._cache[key]) + self.epsilon)
 
-    def get_config(self):
+    def get_config(self) -> Dict[str, Any]:
         """Returns AdaGrad config."""
         cfg = super().get_config()
         cfg["config"]["epsilon"] = self.epsilon
@@ -151,14 +156,14 @@ class RMSprop(Optimizer):
         self.epsilon = epsilon
         self._cache: Dict[Tuple[int, str], np.ndarray] = {}
 
-    def _update(self, layer_id, name, param, grad):
+    def _update(self, layer_id: int, name: str, param: np.ndarray, grad: np.ndarray) -> None:
         key = (layer_id, name)
         if key not in self._cache:
             self._cache[key] = np.zeros_like(grad)
         self._cache[key] = self.rho * self._cache[key] + (1 - self.rho) * grad ** 2
         param -= self.lr * grad / (np.sqrt(self._cache[key]) + self.epsilon)
 
-    def get_config(self):
+    def get_config(self) -> Dict[str, Any]:
         """Returns RMSprop config."""
         cfg = super().get_config()
         cfg["config"].update({"rho": self.rho, "epsilon": self.epsilon})
@@ -183,7 +188,7 @@ class Adam(Optimizer):
         self._m: Dict[Tuple[int, str], np.ndarray] = {}
         self._v: Dict[Tuple[int, str], np.ndarray] = {}
 
-    def _update(self, layer_id, name, param, grad):
+    def _update(self, layer_id: int, name: str, param: np.ndarray, grad: np.ndarray) -> None:
         key = (layer_id, name)
         if key not in self._m:
             self._m[key] = np.zeros_like(grad)
@@ -197,7 +202,7 @@ class Adam(Optimizer):
 
         param -= self.lr * m_hat / (np.sqrt(v_hat) + self.epsilon)
 
-    def get_config(self):
+    def get_config(self) -> Dict[str, Any]:
         """Returns Adam config."""
         cfg = super().get_config()
         cfg["config"].update({
@@ -212,7 +217,7 @@ _OPTIMIZERS = {"sgd": SGD, "adagrad": AdaGrad, "rmsprop": RMSprop, "adam": Adam}
 _OPT_CLASSES = {"SGD": SGD, "AdaGrad": AdaGrad, "RMSprop": RMSprop, "Adam": Adam}
 
 
-def get_optimizer(opt) -> Optimizer:
+def get_optimizer(opt: Union[str, Dict[str, Any], Optimizer]) -> Optimizer:
     """Resolves an optimizer from string, dict, or instance."""
     if isinstance(opt, Optimizer):
         return opt

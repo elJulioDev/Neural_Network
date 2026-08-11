@@ -29,16 +29,16 @@ class Callback:
     def __init__(self):
         self.model = None
 
-    def set_model(self, model):
+    def set_model(self, model: Any) -> None:
         """Sets the model reference (called by fit())."""
         self.model = model
 
-    def on_train_begin(self, logs: Optional[Dict[str, Any]] = None): pass
-    def on_train_end(self, logs: Optional[Dict[str, Any]] = None): pass
-    def on_epoch_begin(self, epoch: int, logs: Optional[Dict[str, Any]] = None): pass
-    def on_epoch_end(self, epoch: int, logs: Optional[Dict[str, Any]] = None): pass
-    def on_batch_begin(self, batch: int, logs: Optional[Dict[str, Any]] = None): pass
-    def on_batch_end(self, batch: int, logs: Optional[Dict[str, Any]] = None): pass
+    def on_train_begin(self, logs: Optional[Dict[str, Any]] = None) -> None: pass
+    def on_train_end(self, logs: Optional[Dict[str, Any]] = None) -> None: pass
+    def on_epoch_begin(self, epoch: int, logs: Optional[Dict[str, Any]] = None) -> None: pass
+    def on_epoch_end(self, epoch: int, logs: Optional[Dict[str, Any]] = None) -> None: pass
+    def on_batch_begin(self, batch: int, logs: Optional[Dict[str, Any]] = None) -> None: pass
+    def on_batch_end(self, batch: int, logs: Optional[Dict[str, Any]] = None) -> None: pass
 
 
 class History(Callback):
@@ -51,11 +51,11 @@ class History(Callback):
         super().__init__()
         self.history: Dict[str, list] = {}
 
-    def on_train_begin(self, logs=None):
+    def on_train_begin(self, logs: Optional[Dict[str, Any]] = None) -> None:
         """Resets history at the start of training."""
         self.history = {}
 
-    def on_epoch_end(self, epoch, logs=None):
+    def on_epoch_end(self, epoch: int, logs: Optional[Dict[str, Any]] = None) -> None:
         """Appends epoch metrics to history."""
         logs = logs or {}
         for key, value in logs.items():
@@ -104,14 +104,14 @@ class EarlyStopping(Callback):
             return current < self.best - self.min_delta
         return current > self.best + self.min_delta
 
-    def on_train_begin(self, logs=None):
+    def on_train_begin(self, logs: Optional[Dict[str, Any]] = None) -> None:
         """Resets early stopping state."""
         self.wait = 0
         self.best = np.inf if self.mode == "min" else -np.inf
         self.best_weights = None
         self.stopped_epoch = 0
 
-    def on_epoch_end(self, epoch, logs=None):
+    def on_epoch_end(self, epoch: int, logs: Optional[Dict[str, Any]] = None) -> None:
         """Checks metric and stops training if patience exceeded."""
         logs = logs or {}
         current = logs.get(self.monitor)
@@ -129,7 +129,7 @@ class EarlyStopping(Callback):
                 self.stopped_epoch = epoch
                 self.model.stop_training = True
 
-    def on_train_end(self, logs=None):
+    def on_train_end(self, logs: Optional[Dict[str, Any]] = None) -> None:
         """Restores best weights if restore_best_weights is True."""
         if self.restore_best_weights and self.best_weights is not None:
             self.model.set_weights(self.best_weights)
@@ -165,7 +165,7 @@ class ModelCheckpoint(Callback):
         self.mode = mode
         self.best = np.inf if mode == "min" else -np.inf
 
-    def on_epoch_end(self, epoch, logs=None):
+    def on_epoch_end(self, epoch: int, logs: Optional[Dict[str, Any]] = None) -> None:
         """Saves weights if metric improves."""
         logs = logs or {}
         if not self.save_best_only:
@@ -215,7 +215,7 @@ class ReduceLROnPlateau(Callback):
         self.best = np.inf if mode == "min" else -np.inf
         self.wait = 0
 
-    def on_epoch_end(self, epoch, logs=None):
+    def on_epoch_end(self, epoch: int, logs: Optional[Dict[str, Any]] = None) -> None:
         """Reduces LR if metric plateaus."""
         logs = logs or {}
         current = logs.get(self.monitor)

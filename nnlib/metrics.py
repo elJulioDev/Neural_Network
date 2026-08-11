@@ -1,5 +1,5 @@
 """Metrics with serialization support."""
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 import numpy as np
 
@@ -31,12 +31,12 @@ class BinaryAccuracy(Metric):
     def __init__(self, threshold: float = 0.5):
         self.threshold = threshold
 
-    def __call__(self, y_pred, y_true):
+    def __call__(self, y_pred: np.ndarray, y_true: np.ndarray) -> float:
         """Returns fraction of correct binary predictions."""
         preds = (y_pred >= self.threshold).astype(int)
         return float(np.mean(preds == y_true.astype(int)))
 
-    def get_config(self):
+    def get_config(self) -> Dict[str, Any]:
         """Returns BinaryAccuracy config."""
         return {"class_name": "BinaryAccuracy", "config": {"threshold": self.threshold}}
 
@@ -46,7 +46,7 @@ class CategoricalAccuracy(Metric):
 
     name = "categorical_accuracy"
 
-    def __call__(self, y_pred, y_true):
+    def __call__(self, y_pred: np.ndarray, y_true: np.ndarray) -> float:
         """Returns fraction of correct multiclass predictions."""
         return float(np.mean(np.argmax(y_pred, axis=1) == np.argmax(y_true, axis=1)))
 
@@ -56,7 +56,7 @@ class SparseCategoricalAccuracy(Metric):
 
     name = "sparse_categorical_accuracy"
 
-    def __call__(self, y_pred, y_true):
+    def __call__(self, y_pred: np.ndarray, y_true: np.ndarray) -> float:
         """Returns fraction of correct sparse predictions."""
         return float(np.mean(np.argmax(y_pred, axis=1) == y_true.flatten().astype(int)))
 
@@ -66,7 +66,7 @@ class MeanAbsoluteError(Metric):
 
     name = "mae"
 
-    def __call__(self, y_pred, y_true):
+    def __call__(self, y_pred: np.ndarray, y_true: np.ndarray) -> float:
         """Returns MAE."""
         return float(np.mean(np.abs(y_pred - y_true)))
 
@@ -76,7 +76,7 @@ class RootMeanSquaredError(Metric):
 
     name = "rmse"
 
-    def __call__(self, y_pred, y_true):
+    def __call__(self, y_pred: np.ndarray, y_true: np.ndarray) -> float:
         """Returns RMSE."""
         return float(np.sqrt(np.mean((y_pred - y_true) ** 2)))
 
@@ -86,7 +86,7 @@ class R2Score(Metric):
 
     name = "r2"
 
-    def __call__(self, y_pred, y_true):
+    def __call__(self, y_pred: np.ndarray, y_true: np.ndarray) -> float:
         """Returns R2 score."""
         ss_res = np.sum((y_true - y_pred) ** 2)
         ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
@@ -113,7 +113,7 @@ _METRIC_CLASSES = {
 }
 
 
-def get_metric(metric) -> Metric:
+def get_metric(metric: Union[str, Dict[str, Any], Metric]) -> Metric:
     """Resolves a metric from string, dict, or instance."""
     if isinstance(metric, Metric):
         return metric
