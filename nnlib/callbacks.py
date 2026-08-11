@@ -10,9 +10,17 @@ Available hooks:
 - on_epoch_begin / on_epoch_end
 - on_batch_begin / on_batch_end
 """
+import logging
 from typing import Any, Dict, Optional
 
 import numpy as np
+
+logger = logging.getLogger("neural_network.callbacks")
+
+
+def _detect_mode(monitor: str) -> str:
+    """Auto-detect whether higher or lower is better for a metric."""
+    return "max" if "acc" in monitor or "r2" in monitor else "min"
 
 
 class Callback:
@@ -78,7 +86,7 @@ class EarlyStopping(Callback):
         self.restore_best_weights = restore_best_weights
 
         if mode == "auto":
-            mode = "max" if "acc" in monitor or "r2" in monitor else "min"
+            mode = _detect_mode(monitor)
         if mode not in ("min", "max"):
             raise ValueError("mode must be 'min', 'max' or 'auto'.")
         self.mode = mode
@@ -120,7 +128,7 @@ class EarlyStopping(Callback):
         if self.restore_best_weights and self.best_weights is not None:
             self.model.set_weights(self.best_weights)
         if self.stopped_epoch > 0:
-            print(f"EarlyStopping: stopped at epoch {self.stopped_epoch}")
+            logger.info("EarlyStopping: stopped at epoch %d", self.stopped_epoch)
 
 
 class ModelCheckpoint(Callback):
@@ -147,7 +155,7 @@ class ModelCheckpoint(Callback):
         self.save_best_only = save_best_only
 
         if mode == "auto":
-            mode = "max" if "acc" in monitor or "r2" in monitor else "min"
+            mode = _detect_mode(monitor)
         self.mode = mode
         self.best = np.inf if mode == "min" else -np.inf
 
@@ -195,7 +203,7 @@ class ReduceLROnPlateau(Callback):
         self.min_lr = min_lr
 
         if mode == "auto":
-            mode = "max" if "acc" in monitor or "r2" in monitor else "min"
+            mode = _detect_mode(monitor)
         self.mode = mode
         self.best = np.inf if mode == "min" else -np.inf
         self.wait = 0
@@ -218,5 +226,5 @@ class ReduceLROnPlateau(Callback):
                 new_lr = max(old_lr * self.factor, self.min_lr)
                 if new_lr < old_lr:
                     self.model.optimizer.lr = new_lr
-                    print(f"ReduceLROnPlateau: lr {old_lr:.2e} -> {new_lr:.2e}")
+                    logger.info("ReduceLROnPlateau: lr %.2e -> %.2e", old_lr, new_lr)
                 self.wait = 0

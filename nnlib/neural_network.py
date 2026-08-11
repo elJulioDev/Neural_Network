@@ -1,24 +1,23 @@
 """
-NeuralNetwork v0.4 — sequential model with:
+NeuralNetwork v1.0 -- sequential model with:
 
-1. External cache management (no layer mutates `self.inputs`/`self.z`).
+1. External cache management (no layer mutates internal state).
    This allows reusing the same layer on multiple inputs (siamese,
    triplet loss) without breaking backprop.
 2. Shape propagation in `build()`: detects dimensional incompatibilities
    BEFORE training (fail-fast).
-3. Portable serialization: `save_topology_json()` + `save_weights_npz()`
-   (or `save()` which combines both). No pickle in the critical path.
+3. Portable serialization: `save()` produces topology.json + weights.npz.
+   No pickle in the critical path.
 4. Generic optimizer: `_collect_grads_and_params()` builds tuples
-   (layer_id, param_name, param, grad) without assuming 'weights'/'biases'.
+   (layer_id, param_name, param, grad) without assuming parameter names.
 
 Main API (Keras-style):
     model = NeuralNetwork()
     model.add(Dense(64, input_size=10, activation='relu'))
     model.add(Dense(1, activation='linear'))
     model.compile(optimizer='adam', loss='mse', metrics=['mae'])
-    model.build()                 # validates shapes (optional, fit() does it)
     history = model.fit(X, y, epochs=50, validation_split=0.2)
-    model.save('my_model/')       # my_model/topology.json + weights.npz
+    model.save('my_model/')
     loaded = NeuralNetwork.load('my_model/')
 """
 import json
@@ -47,7 +46,7 @@ if not logger.handlers:
 
 class NeuralNetwork:
 
-    VERSION = "0.4.0"
+    VERSION = "1.0.0"
 
     def __init__(
         self,
@@ -103,7 +102,7 @@ class NeuralNetwork:
         activation=None,
         **kwargs,
     ) -> "NeuralNetwork":
-        """Legacy API compatible with v0.2/v0.3."""
+        """Legacy add_layer() for simple sequential construction."""
         if activation is None:
             activation = "sigmoid"
         if not self.layers and input_size is None:
@@ -243,8 +242,11 @@ class NeuralNetwork:
         return np.concatenate(outputs, axis=0)
 
     def predict_classes(self, x: np.ndarray, threshold: float = 0.5) -> np.ndarray:
+        """Returns class predictions. Binary: threshold at 0.5. Multiclass: argmax."""
         probs = self.predict(x)
-        if probs.shape[1] == 1:
+        if probs.ndim == 1:
+            return (probs >= threshold).astype(int)
+        if probs.ndim == 2 and probs.shape[1] == 1:
             return (probs >= threshold).astype(int)
         return np.argmax(probs, axis=1)
 
@@ -330,7 +332,7 @@ class NeuralNetwork:
                     cb.on_batch_end(batch_idx, {"loss": loss})
 
                 if verbose >= 2:
-                    print(f"  batch {batch_idx + 1}/{steps} - loss: {loss:.6f}")
+                    logger.debug("  batch %d/%d - loss: %.6f", batch_idx + 1, steps, loss)
 
             logs: Dict[str, Any] = {"loss": epoch_loss / steps}
             for name, total in metric_sums.items():
@@ -346,7 +348,7 @@ class NeuralNetwork:
                 msg = f"Epoch {epoch + 1}/{epochs} - {elapsed:.2f}s - " + " - ".join(
                     f"{k}: {v:.6f}" for k, v in logs.items()
                 )
-                print(msg)
+                logger.info(msg)
 
             for cb in callbacks:
                 cb.on_epoch_end(epoch, logs)
@@ -379,7 +381,7 @@ class NeuralNetwork:
             result[name] = total / steps
 
         if verbose >= 1:
-            print(" - ".join(f"{k}: {v:.6f}" for k, v in result.items()))
+            logger.info(" - ".join(f"{k}: {v:.6f}" for k, v in result.items()))
         return result
 
     # ------------------------------------------------------------------
@@ -494,7 +496,7 @@ class NeuralNetwork:
         with open(filepath, "rb") as f:
             return pickle.load(f)
 
-    # Alias for backward compatibility with v0.3
+    # Alias for backward compatibility
     def get_weights(self) -> List[np.ndarray]:
         """Flat list of trainable parameters (same order as set_weights)."""
         result = []

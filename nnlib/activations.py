@@ -1,5 +1,5 @@
 """
-Activation functions — stateless version (v0.4+).
+Activation functions -- stateless version.
 
 Activations NO LONGER store state in the instance. The `forward` method
 returns `(output, cache)` and `backward(d_output, cache)` uses that

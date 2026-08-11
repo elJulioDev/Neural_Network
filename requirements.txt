@@ -1,5 +1,4 @@
-# Development dependencies
-# Runtime deps are in pyproject.toml [project.dependencies]
-numpy>=1.21.0
-matplotlib>=3.5.0
-ruff>=0.4.0
+# Runtime dependency (numpy)
+# Install the package with: pip install -e .
+# This reads pyproject.toml and installs numpy automatically.
+# Dev dependencies (ruff, matplotlib): pip install -e ".[dev]"

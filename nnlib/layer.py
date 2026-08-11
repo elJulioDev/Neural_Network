@@ -1,7 +1,7 @@
 """
-Layers — v0.4 with external state and generic parameter API.
+Layers with external state and generic parameter API.
 
-Key changes from v0.3:
+Key design:
 
 1. `forward(inputs, training) -> (output, cache)`: no longer mutates `self`.
    The cache is a dict with everything `backward` needs. This allows
@@ -222,7 +222,7 @@ class Dropout(BaseLayer):
         if not training or self.rate == 0.0:
             return inputs, {"mask": None}
         keep_prob = 1.0 - self.rate
-        mask = (np.random.rand(*inputs.shape) < keep_prob) / keep_prob
+        mask = (np.random.default_rng().random(inputs.shape) < keep_prob) / keep_prob
         return inputs * mask, {"mask": mask}
 
     def backward(self, d_output, cache):
@@ -348,5 +348,8 @@ _LAYER_CLASSES = {
 
 
 def layer_from_config(config: Dict[str, Any]) -> BaseLayer:
-    cls = _LAYER_CLASSES[config["class_name"]]
+    class_name = config.get("class_name")
+    if class_name not in _LAYER_CLASSES:
+        raise ValueError(f"Unknown layer: {class_name}. Options: {list(_LAYER_CLASSES.keys())}")
+    cls = _LAYER_CLASSES[class_name]
     return cls.from_config(config.get("config", {}))

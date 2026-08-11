@@ -1,10 +1,8 @@
 """
-Optimizers v0.4 — generic API independent of parameter type.
+Optimizers -- generic API independent of parameter type.
 
-Eliminates the abstraction leaks of v0.3: optimizers no longer inspect
-hardcoded attributes (`weights`, `biases`, etc). They receive tuples
-`(layer_id, param_name, param_array, grad_array)` and apply the update
-rule in-place.
+Optimizers receive tuples `(layer_id, param_name, param_array, grad_array)`
+and apply the update rule in-place.
 
 This allows layers with any number and name of parameters without
 touching the optimizer code:
