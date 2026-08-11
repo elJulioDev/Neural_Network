@@ -10,7 +10,8 @@ Hooks disponibles:
 - on_epoch_begin / on_epoch_end
 - on_batch_begin / on_batch_end
 """
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
 import numpy as np
 
 

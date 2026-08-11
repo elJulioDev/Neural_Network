@@ -1,17 +1,21 @@
-import unittest
 import os
-import sys
 import tempfile
+import unittest
+
 import numpy as np
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from src import (
-    NeuralNetwork, Dense, Dropout, BatchNormalization,
-    Adam, SGD, L2,
-    CategoricalCrossEntropy, BinaryCrossEntropy,
-    EarlyStopping, ReduceLROnPlateau,
-    train_test_split, to_categorical,
+from nnlib import (
+    L2,
+    SGD,
+    Adam,
+    BatchNormalization,
+    BinaryCrossEntropy,
+    Dense,
+    Dropout,
+    EarlyStopping,
+    NeuralNetwork,
+    to_categorical,
+    train_test_split,
 )
 
 
@@ -60,7 +64,7 @@ class TestStateIsolation(unittest.TestCase):
     """Caches externos — una capa procesando dos inputs no se pisotea."""
 
     def test_layer_reused_across_inputs(self):
-        from src.layer import Dense
+        from nnlib.layer import Dense
         layer = Dense(4, 3, activation="relu")
 
         x1 = np.random.randn(5, 3)

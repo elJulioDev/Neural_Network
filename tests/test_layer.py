@@ -1,12 +1,10 @@
 import unittest
+
 import numpy as np
-import sys, os
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from src.layer import Layer, Dense, Dropout, BatchNormalization, layer_from_config
-from src.activations import Sigmoid, ReLU
-from src.regularizers import L2
+from nnlib.activations import ReLU, Sigmoid
+from nnlib.layer import BatchNormalization, Dropout, Layer, layer_from_config
+from nnlib.regularizers import L2
 
 
 class TestLayerForwardBackward(unittest.TestCase):
@@ -85,7 +83,6 @@ class TestLayerForwardBackward(unittest.TestCase):
         l = Layer(4, 3, activation="relu", kernel_regularizer=L2(1.0))
         inputs = np.ones((2, 3))
         _, cache = l.forward(inputs)
-        _, grads_no_reg = Layer(4, 3, activation="relu").forward(inputs), None
         _, grads = l.backward(np.ones((2, 4)), cache)
         # El gradiente de weights debe incluir 1.0 * self.weights
         self.assertTrue(np.any(grads["weights"] != 0))

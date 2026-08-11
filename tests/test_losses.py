@@ -1,16 +1,19 @@
 import unittest
+
 import numpy as np
-import sys, os
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from src.losses import (
-    MSE, MAE, Huber,
-    BinaryCrossEntropy, CategoricalCrossEntropy, SparseCategoricalCrossEntropy,
+from nnlib.losses import (
+    MSE,
+    BinaryCrossEntropy,
+    CategoricalCrossEntropy,
+    Huber,
+    SparseCategoricalCrossEntropy,
     get_loss,
 )
-from src.metrics import (
-    BinaryAccuracy, CategoricalAccuracy, SparseCategoricalAccuracy, R2Score,
+from nnlib.metrics import (
+    BinaryAccuracy,
+    CategoricalAccuracy,
+    R2Score,
     get_metric,
 )
 

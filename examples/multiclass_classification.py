@@ -7,13 +7,10 @@ Demo multiclase con BatchNorm, Dropout, callbacks y from_logits.
 - save(dir) + load(dir) con topology JSON + pesos NPZ.
 """
 import os
-import sys
 import tempfile
 import numpy as np
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from src import (
+from nnlib import (
     NeuralNetwork, Dense, Dropout, BatchNormalization,
     Adam, L2, CategoricalCrossEntropy,
     EarlyStopping, ReduceLROnPlateau,

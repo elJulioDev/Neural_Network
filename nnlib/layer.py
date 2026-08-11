@@ -25,13 +25,13 @@ Cambios clave respecto a v0.3:
 
 Capas: Dense (alias Layer), Dropout, BatchNormalization.
 """
-from typing import Optional, Dict, Tuple, Any
+from typing import Any, Dict, Optional, Tuple
+
 import numpy as np
 
 from .activations import Activation, get_activation
 from .initializers import get_initializer
 from .regularizers import Regularizer, get_regularizer
-
 
 Cache = Dict[str, Any]
 ParamDict = Dict[str, np.ndarray]

@@ -25,3 +25,6 @@ htmlcov/
 # Modelos guardados
 *.pkl
 *.npz
+
+# AI agent config
+AGENTS.md

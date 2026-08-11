@@ -1,5 +1,5 @@
 """
-Demo XOR — v0.4.
+Demo XOR — v1.0.
 
 Muestra el camino recomendado de producción:
 - capa final 'linear' + BinaryCrossEntropy(from_logits=True).
@@ -11,7 +11,7 @@ import os
 import tempfile
 import numpy as np
 
-from src import (
+from nnlib import (
     NeuralNetwork, Dense,
     Adam, BinaryCrossEntropy,
     EarlyStopping,

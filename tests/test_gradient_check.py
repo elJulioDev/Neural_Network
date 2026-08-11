@@ -7,12 +7,10 @@ Cubre combinaciones críticas que antes podían fallar silenciosamente:
 - Linear + CategoricalCrossEntropy(from_logits=True) (atajo estable)
 """
 import unittest
+
 import numpy as np
-import sys, os
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from src import NeuralNetwork, Dense, MSE, CategoricalCrossEntropy
+from nnlib import MSE, CategoricalCrossEntropy, Dense, NeuralNetwork
 
 
 def _numeric_gradient(model, X, y, loss_fn, layer_idx, param_name, eps=1e-5):

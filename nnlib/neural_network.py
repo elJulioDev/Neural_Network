@@ -21,20 +21,21 @@ API principal (estilo Keras):
     model.save('my_model/')       # my_model/topology.json + weights.npz
     loaded = NeuralNetwork.load('my_model/')
 """
-from typing import Any, Dict, List, Optional, Tuple, Union
-import os
-import time
 import json
-import pickle
 import logging
+import os
+import pickle
+import time
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import numpy as np
 
-from .layer import BaseLayer, Layer, Dense, Dropout, BatchNormalization, layer_from_config
-from .losses import Loss, MSE, get_loss
-from .optimizers import Optimizer, SGD, get_optimizer
-from .metrics import Metric, get_metric
 from .callbacks import Callback, History
-from .utils import shuffle_arrays, batch_iterator, train_test_split
+from .layer import BaseLayer, BatchNormalization, Dropout, Layer, layer_from_config
+from .losses import Loss, get_loss
+from .metrics import Metric, get_metric
+from .optimizers import Optimizer, get_optimizer
+from .utils import batch_iterator, shuffle_arrays, train_test_split
 
 logger = logging.getLogger("neural_network")
 if not logger.handlers:
@@ -401,7 +402,6 @@ class NeuralNetwork:
 
     @classmethod
     def from_config(cls, config: Dict[str, Any]) -> "NeuralNetwork":
-        version = config.get("version", "unknown")
         cfg = config["config"]
         model = cls()
         for layer_cfg in cfg["layers"]:

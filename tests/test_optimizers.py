@@ -1,10 +1,8 @@
 import unittest
+
 import numpy as np
-import sys, os
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from src.optimizers import SGD, AdaGrad, RMSprop, Adam, get_optimizer
+from nnlib.optimizers import SGD, AdaGrad, Adam, RMSprop, get_optimizer
 
 
 def make_step(opt, param, grad, layer_id=1, name="w"):

@@ -13,14 +13,10 @@ independientes.
 Aquí construimos manualmente un embedder siamés: una red compartida
 procesa dos inputs, y una loss contrastiva simple compara sus embeddings.
 """
-import os
-import sys
 import numpy as np
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from src.layer import Dense, Dropout
-from src.activations import ReLU, Tanh
+from nnlib.layer import Dense, Dropout
+from nnlib.activations import ReLU, Tanh
 
 
 class SiameseEncoder:

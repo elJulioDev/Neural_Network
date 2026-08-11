@@ -8,7 +8,8 @@ standardize: z-score (media 0, desviación 1).
 shuffle: barajado conjunto de X e y.
 batch_iterator: generador de mini-batches.
 """
-from typing import Tuple, Iterator
+from typing import Iterator, Tuple
+
 import numpy as np
 
 

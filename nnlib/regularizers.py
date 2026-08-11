@@ -1,5 +1,6 @@
 """Regularizadores L1, L2, L1L2 con soporte de serialización."""
-from typing import Dict, Any
+from typing import Any, Dict
+
 import numpy as np
 
 

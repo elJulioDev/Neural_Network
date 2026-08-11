@@ -1,5 +1,6 @@
 """Inicializadores con soporte para serialización JSON."""
-from typing import Dict, Any, Tuple, Optional
+from typing import Any, Dict, Optional, Tuple
+
 import numpy as np
 
 

@@ -14,9 +14,9 @@ matemáticamente correcto con CUALQUIER función de pérdida. El atajo
 
 Activaciones: Sigmoid, ReLU, LeakyReLU, ELU, Tanh, Softmax, Linear.
 """
-from typing import Dict, Tuple, Any
-import numpy as np
+from typing import Any, Dict, Tuple
 
+import numpy as np
 
 Cache = Dict[str, Any]
 

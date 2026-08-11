@@ -1,11 +1,15 @@
 import unittest
+
 import numpy as np
-import sys, os
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from src.activations import (
-    Sigmoid, ReLU, LeakyReLU, ELU, Tanh, Softmax, Linear,
+from nnlib.activations import (
+    ELU,
+    LeakyReLU,
+    Linear,
+    ReLU,
+    Sigmoid,
+    Softmax,
+    Tanh,
     get_activation,
 )
 
@@ -30,7 +34,7 @@ class TestActivationsStateless(unittest.TestCase):
         out1, cache1 = act.forward(x1)
         out2, cache2 = act.forward(x2)
         d1 = act.backward(np.ones_like(out1), cache1)
-        d2 = act.backward(np.ones_like(out2), cache2)
+        act.backward(np.ones_like(out2), cache2)
         # El backward de x1 debe usar el cache de x1, no el de x2
         expected_d1 = out1 * (1 - out1)
         np.testing.assert_allclose(d1, expected_d1, atol=1e-10)

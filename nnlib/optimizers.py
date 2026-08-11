@@ -15,6 +15,7 @@ tocar el código del optimizer:
 Todos soportan gradient clipping (clip_norm, clip_value).
 """
 from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 
 

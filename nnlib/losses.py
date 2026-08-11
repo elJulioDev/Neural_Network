@@ -18,7 +18,8 @@ explícitamente qué espera recibir la loss.
 Disponibles: MSE, MAE, Huber, BinaryCrossEntropy,
 CategoricalCrossEntropy, SparseCategoricalCrossEntropy.
 """
-from typing import Dict, Any
+from typing import Any, Dict
+
 import numpy as np
 
 _EPSILON = 1e-15
