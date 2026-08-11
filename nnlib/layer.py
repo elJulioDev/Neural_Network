@@ -58,14 +58,17 @@ class BaseLayer:
     output_shape: Optional[Tuple[Optional[int], int]] = None
 
     def build(self, input_shape: Tuple[Optional[int], int]) -> Tuple[Optional[int], int]:
+        """Initializes weights from input shape. Returns output shape."""
         self.input_shape = input_shape
         self.output_shape = input_shape  # default: identity
         return self.output_shape
 
     def forward(self, inputs: np.ndarray, training: bool = True) -> Tuple[np.ndarray, Cache]:
+        """Forward pass. Returns (output, cache)."""
         raise NotImplementedError
 
     def backward(self, d_output: np.ndarray, cache: Cache) -> Tuple[np.ndarray, ParamDict]:
+        """Backward pass. Returns (d_input, grads_dict)."""
         raise NotImplementedError
 
     def parameters(self) -> ParamDict:
@@ -77,13 +80,16 @@ class BaseLayer:
         return {}
 
     def regularization_loss(self) -> float:
+        """Returns the regularization loss contribution of this layer."""
         return 0.0
 
     def get_config(self) -> Dict[str, Any]:
+        """Returns a JSON-serializable config dict."""
         return {"class_name": type(self).__name__, "config": {}}
 
     @classmethod
     def from_config(cls, config: Dict[str, Any]) -> "BaseLayer":
+        """Reconstructs a layer from a config dict."""
         return cls(**config)
 
 
@@ -128,6 +134,7 @@ class Layer(BaseLayer):
             self.build((None, input_size))
 
     def build(self, input_shape):
+        """Initializes weights and biases from input shape."""
         input_size = input_shape[-1]
         if input_size is None:
             raise ValueError(
@@ -141,6 +148,7 @@ class Layer(BaseLayer):
         return self.output_shape
 
     def forward(self, inputs, training=True):
+        """Computes z = x @ W + b, then applies activation."""
         if not self._built:
             self.build((None, inputs.shape[1]))
         # Fail-fast shape validation
@@ -155,6 +163,7 @@ class Layer(BaseLayer):
         return output, cache
 
     def backward(self, d_output, cache):
+        """Computes gradients for weights, biases, and input."""
         # Propagate through activation first (using the activation cache)
         d_z = self.activation.backward(d_output, cache["activation_cache"])
         inputs = cache["inputs"]
@@ -171,14 +180,17 @@ class Layer(BaseLayer):
         return d_input, grads
 
     def parameters(self):
+        """Returns trainable parameters: weights and biases."""
         return {"weights": self.weights, "biases": self.biases}
 
     def regularization_loss(self):
+        """Returns L1/L2 regularization loss on weights."""
         if self.kernel_regularizer is None:
             return 0.0
         return self.kernel_regularizer.loss(self.weights)
 
     def get_config(self):
+        """Returns layer config for JSON serialization."""
         return {
             "class_name": "Dense",
             "config": {
@@ -214,11 +226,13 @@ class Dropout(BaseLayer):
         self.rate = rate
 
     def build(self, input_shape):
+        """Stores input shape (no weights to initialize)."""
         self.input_shape = input_shape
         self.output_shape = input_shape
         return input_shape
 
     def forward(self, inputs, training=True):
+        """Applies dropout mask during training, identity during inference."""
         if not training or self.rate == 0.0:
             return inputs, {"mask": None}
         keep_prob = 1.0 - self.rate
@@ -226,12 +240,14 @@ class Dropout(BaseLayer):
         return inputs * mask, {"mask": mask}
 
     def backward(self, d_output, cache):
+        """Passes gradient through the mask."""
         mask = cache["mask"]
         if mask is None:
             return d_output, {}
         return d_output * mask, {}
 
     def get_config(self):
+        """Returns Dropout config."""
         return {"class_name": "Dropout", "config": {"rate": self.rate}}
 
 
@@ -266,6 +282,7 @@ class BatchNormalization(BaseLayer):
             self.build((None, n_features))
 
     def build(self, input_shape):
+        """Initializes gamma, beta, running_mean, running_var."""
         n = input_shape[-1]
         if n is None:
             raise ValueError("BatchNormalization: features undefined in build().")
@@ -280,6 +297,7 @@ class BatchNormalization(BaseLayer):
         return input_shape
 
     def forward(self, inputs, training=True):
+        """Normalizes inputs and applies gamma/beta. Updates running stats in training."""
         if not self._built:
             self.build((None, inputs.shape[1]))
         if training:
@@ -307,6 +325,7 @@ class BatchNormalization(BaseLayer):
         return out, cache
 
     def backward(self, d_output, cache):
+        """Computes gradients for gamma and beta."""
         x_hat = cache["x_hat"]
         inv_std = cache["inv_std"]
         N = d_output.shape[0]
@@ -323,12 +342,15 @@ class BatchNormalization(BaseLayer):
         return dx, {"gamma": dgamma, "beta": dbeta}
 
     def parameters(self):
+        """Returns trainable parameters: gamma and beta."""
         return {"gamma": self.gamma, "beta": self.beta}
 
     def non_trainable_state(self):
+        """Returns running statistics (persisted but not trained)."""
         return {"running_mean": self.running_mean, "running_var": self.running_var}
 
     def get_config(self):
+        """Returns BatchNormalization config."""
         return {
             "class_name": "BatchNormalization",
             "config": {
@@ -348,6 +370,7 @@ _LAYER_CLASSES = {
 
 
 def layer_from_config(config: Dict[str, Any]) -> BaseLayer:
+    """Reconstructs a layer from a config dict. Raises ValueError for unknown layers."""
     class_name = config.get("class_name")
     if class_name not in _LAYER_CLASSES:
         raise ValueError(f"Unknown layer: {class_name}. Options: {list(_LAYER_CLASSES.keys())}")

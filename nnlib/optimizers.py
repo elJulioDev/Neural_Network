@@ -37,6 +37,7 @@ class Optimizer:
         self.iterations = 0
 
     def _clip(self, grad: np.ndarray) -> np.ndarray:
+        """Applies gradient clipping (value and/or norm)."""
         if self.clip_value is not None:
             grad = np.clip(grad, -self.clip_value, self.clip_value)
         if self.clip_norm is not None:
@@ -78,6 +79,7 @@ class Optimizer:
 
     @classmethod
     def from_config(cls, config: Dict[str, Any]) -> "Optimizer":
+        """Reconstructs an optimizer from a config dict."""
         return cls(**config)
 
 
@@ -109,8 +111,8 @@ class SGD(Optimizer):
         param += update  # in-place
 
     def get_config(self):
+        """Returns SGD config."""
         cfg = super().get_config()
-        cfg["config"].update({"momentum": self.momentum, "nesterov": self.nesterov})
         return cfg
 
 
@@ -128,12 +130,15 @@ class AdaGrad(Optimizer):
         param -= self.lr * grad / (np.sqrt(self._cache[key]) + self.epsilon)
 
     def get_config(self):
+        """Returns AdaGrad config."""
         cfg = super().get_config()
         cfg["config"]["epsilon"] = self.epsilon
         return cfg
 
 
 class RMSprop(Optimizer):
+    """RMSprop optimizer with exponential moving average of squared gradients."""
+
     def __init__(
         self,
         learning_rate: float = 0.001,
@@ -154,12 +159,15 @@ class RMSprop(Optimizer):
         param -= self.lr * grad / (np.sqrt(self._cache[key]) + self.epsilon)
 
     def get_config(self):
+        """Returns RMSprop config."""
         cfg = super().get_config()
         cfg["config"].update({"rho": self.rho, "epsilon": self.epsilon})
         return cfg
 
 
 class Adam(Optimizer):
+    """Adam optimizer with adaptive learning rates and momentum."""
+
     def __init__(
         self,
         learning_rate: float = 0.001,
@@ -190,6 +198,7 @@ class Adam(Optimizer):
         param -= self.lr * m_hat / (np.sqrt(v_hat) + self.epsilon)
 
     def get_config(self):
+        """Returns Adam config."""
         cfg = super().get_config()
         cfg["config"].update({
             "beta_1": self.beta_1,
@@ -204,6 +213,7 @@ _OPT_CLASSES = {"SGD": SGD, "AdaGrad": AdaGrad, "RMSprop": RMSprop, "Adam": Adam
 
 
 def get_optimizer(opt) -> Optimizer:
+    """Resolves an optimizer from string, dict, or instance."""
     if isinstance(opt, Optimizer):
         return opt
     if isinstance(opt, str):

@@ -71,6 +71,7 @@ class NeuralNetwork:
     # ------------------------------------------------------------------
 
     def add(self, layer: BaseLayer) -> "NeuralNetwork":
+        """Appends a layer to the model. Builds it immediately if shapes are known."""
         if not isinstance(layer, BaseLayer):
             raise TypeError(f"Expected BaseLayer, received {type(layer)}")
         self.layers.append(layer)
@@ -111,10 +112,12 @@ class NeuralNetwork:
         return self
 
     def add_dropout(self, rate: float) -> "NeuralNetwork":
+        """Convenience: appends a Dropout layer."""
         self.add(Dropout(rate))
         return self
 
     def add_batch_norm(self) -> "NeuralNetwork":
+        """Convenience: appends a BatchNormalization layer."""
         self.add(BatchNormalization())
         return self
 
@@ -159,6 +162,7 @@ class NeuralNetwork:
         loss: Union[str, Loss] = "mse",
         metrics: Optional[List[Union[str, Metric]]] = None,
     ) -> None:
+        """Configures the model for training: optimizer, loss, and metrics."""
         self.optimizer = get_optimizer(optimizer)
         self.loss_function = get_loss(loss)
         self.metrics = [get_metric(m) for m in (metrics or [])]
@@ -234,6 +238,7 @@ class NeuralNetwork:
         return output
 
     def predict(self, x: np.ndarray, batch_size: Optional[int] = None) -> np.ndarray:
+        """Returns model output for input x. Supports batched inference."""
         if batch_size is None or x.shape[0] <= batch_size:
             return self.forward(x, training=False)
         outputs = []
@@ -266,6 +271,7 @@ class NeuralNetwork:
         verbose: int = 1,
         shuffle: bool = True,
     ) -> Dict[str, list]:
+        """Trains the model for a fixed number of epochs."""
         self._ensure_ready()
         self._validate_input(x, y)
 
@@ -365,6 +371,7 @@ class NeuralNetwork:
         return self.fit(x, y, epochs=epochs, batch_size=batch_size, verbose=verbose)
 
     def evaluate(self, x, y, batch_size: int = 32, verbose: int = 1) -> Dict[str, float]:
+        """Evaluates the model on data, returns loss and metrics."""
         self._ensure_ready()
         steps = max(1, (len(x) + batch_size - 1) // batch_size)
         total_loss = 0.0
@@ -389,6 +396,7 @@ class NeuralNetwork:
     # ------------------------------------------------------------------
 
     def get_config(self) -> Dict[str, Any]:
+        """Returns a JSON-serializable dict of the model topology."""
         return {
             "class_name": "NeuralNetwork",
             "version": self.VERSION,
@@ -403,6 +411,7 @@ class NeuralNetwork:
 
     @classmethod
     def from_config(cls, config: Dict[str, Any]) -> "NeuralNetwork":
+        """Reconstructs a NeuralNetwork from a config dict."""
         cfg = config["config"]
         model = cls()
         for layer_cfg in cfg["layers"]:
@@ -420,10 +429,12 @@ class NeuralNetwork:
         return model
 
     def to_json(self, indent: int = 2) -> str:
+        """Serializes the model topology to a JSON string."""
         return json.dumps(self.get_config(), indent=indent)
 
     @classmethod
     def from_json(cls, json_str: str) -> "NeuralNetwork":
+        """Reconstructs a NeuralNetwork from a JSON string."""
         return cls.from_config(json.loads(json_str))
 
     def _all_state_arrays(self) -> Dict[str, np.ndarray]:
@@ -476,6 +487,7 @@ class NeuralNetwork:
 
     @classmethod
     def load(cls, directory: str) -> "NeuralNetwork":
+        """Loads a model from topology.json + weights.npz."""
         with open(os.path.join(directory, "topology.json"), "r", encoding="utf-8") as f:
             model = cls.from_json(f.read())
         model.load_weights(os.path.join(directory, "weights.npz"))
@@ -493,6 +505,7 @@ class NeuralNetwork:
 
     @staticmethod
     def load_model(filepath: str) -> "NeuralNetwork":
+        """Legacy: loads a model from a pickle file. Prefer `load()`."""
         with open(filepath, "rb") as f:
             return pickle.load(f)
 
@@ -508,6 +521,7 @@ class NeuralNetwork:
         return result
 
     def set_weights(self, weights: List[np.ndarray]) -> None:
+        """Sets weights from a flat list (same order as get_weights)."""
         idx = 0
         for layer in self.layers:
             for _, arr in layer.parameters().items():
@@ -522,6 +536,7 @@ class NeuralNetwork:
     # ------------------------------------------------------------------
 
     def summary(self) -> None:
+        """Prints a summary of the model architecture and parameter count."""
         print("=" * 70)
         print(f"{'Layer':<25}{'Output Shape':<22}{'Params':>15}")
         print("=" * 70)

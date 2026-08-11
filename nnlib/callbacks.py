@@ -30,6 +30,7 @@ class Callback:
         self.model = None
 
     def set_model(self, model):
+        """Sets the model reference (called by fit())."""
         self.model = model
 
     def on_train_begin(self, logs: Optional[Dict[str, Any]] = None): pass
@@ -51,9 +52,11 @@ class History(Callback):
         self.history: Dict[str, list] = {}
 
     def on_train_begin(self, logs=None):
+        """Resets history at the start of training."""
         self.history = {}
 
     def on_epoch_end(self, epoch, logs=None):
+        """Appends epoch metrics to history."""
         logs = logs or {}
         for key, value in logs.items():
             self.history.setdefault(key, []).append(value)
@@ -102,12 +105,14 @@ class EarlyStopping(Callback):
         return current > self.best + self.min_delta
 
     def on_train_begin(self, logs=None):
+        """Resets early stopping state."""
         self.wait = 0
         self.best = np.inf if self.mode == "min" else -np.inf
         self.best_weights = None
         self.stopped_epoch = 0
 
     def on_epoch_end(self, epoch, logs=None):
+        """Checks metric and stops training if patience exceeded."""
         logs = logs or {}
         current = logs.get(self.monitor)
         if current is None:
@@ -125,6 +130,7 @@ class EarlyStopping(Callback):
                 self.model.stop_training = True
 
     def on_train_end(self, logs=None):
+        """Restores best weights if restore_best_weights is True."""
         if self.restore_best_weights and self.best_weights is not None:
             self.model.set_weights(self.best_weights)
         if self.stopped_epoch > 0:
@@ -160,6 +166,7 @@ class ModelCheckpoint(Callback):
         self.best = np.inf if mode == "min" else -np.inf
 
     def on_epoch_end(self, epoch, logs=None):
+        """Saves weights if metric improves."""
         logs = logs or {}
         if not self.save_best_only:
             self.model.save_weights(self.filepath)
@@ -209,6 +216,7 @@ class ReduceLROnPlateau(Callback):
         self.wait = 0
 
     def on_epoch_end(self, epoch, logs=None):
+        """Reduces LR if metric plateaus."""
         logs = logs or {}
         current = logs.get(self.monitor)
         if current is None:
