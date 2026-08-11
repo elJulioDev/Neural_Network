@@ -23,7 +23,6 @@ Main API (Keras-style):
 import json
 import logging
 import os
-import pickle
 import time
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -506,22 +505,6 @@ class NeuralNetwork:
             model = cls.from_json(f.read())
         model.load_weights(os.path.join(directory, "weights.npz"))
         return model
-
-    # Legacy pickle API (kept for compatibility, not recommended)
-    def save_model(self, filepath: str) -> None:
-        """Legacy serialization via pickle. Prefer `save(directory)`."""
-        logger.warning(
-            "save_model() uses pickle and is fragile. Use save('dir/') for "
-            "portable persistence (JSON + NPZ)."
-        )
-        with open(filepath, "wb") as f:
-            pickle.dump(self, f)
-
-    @staticmethod
-    def load_model(filepath: str) -> "NeuralNetwork":
-        """Legacy: loads a model from a pickle file. Prefer `load()`."""
-        with open(filepath, "rb") as f:
-            return pickle.load(f)
 
     # Alias for backward compatibility
     def get_weights(self) -> List[np.ndarray]:
