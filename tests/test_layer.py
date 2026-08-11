@@ -34,29 +34,29 @@ class TestLayerForwardBackward(unittest.TestCase):
         self.assertEqual(grads["weights"].shape, self.layer.weights.shape)
 
     def test_state_isolation_siamese_pattern(self):
-        """Una misma capa debe procesar dos inputs distintos sin
-        contaminar el cache."""
+        """A single layer must process two different inputs without
+        corrupting the cache."""
         x1 = np.random.randn(3, 3)
         x2 = np.random.randn(3, 3)
 
         out1, cache1 = self.layer.forward(x1)
         out2, cache2 = self.layer.forward(x2)
 
-        # Backward del primer forward DESPUÉS del segundo forward —
-        # antes rompía porque cache2 había pisoteado cache1.
+        # Backward of the first forward AFTER the second forward —
+        # previously it broke because cache2 had overwritten cache1.
         d1, grads1 = self.layer.backward(np.ones_like(out1), cache1)
         d2, grads2 = self.layer.backward(np.ones_like(out2), cache2)
 
         self.assertEqual(d1.shape, x1.shape)
         self.assertEqual(d2.shape, x2.shape)
-        # Los gradientes deben ser distintos porque los inputs son distintos
+        # Gradients must be different because the inputs are different
         self.assertFalse(np.allclose(grads1["weights"], grads2["weights"]))
 
     def test_parameters_returns_dict_of_references(self):
         params = self.layer.parameters()
         self.assertIn("weights", params)
         self.assertIn("biases", params)
-        # Modificar la ref debe afectar al atributo de la capa
+        # Modifying the reference must affect the layer attribute
         params["weights"][...] = 0.0
         self.assertTrue(np.all(self.layer.weights == 0.0))
 
@@ -68,7 +68,7 @@ class TestLayerForwardBackward(unittest.TestCase):
         self.assertEqual(out_shape, (None, 4))
 
     def test_shape_mismatch_fail_fast(self):
-        inputs = np.random.randn(5, 10)  # esperaba 3 features
+        inputs = np.random.randn(5, 10)  # expected 3 features
         with self.assertRaises(ValueError):
             self.layer.forward(inputs)
 
@@ -84,7 +84,7 @@ class TestLayerForwardBackward(unittest.TestCase):
         inputs = np.ones((2, 3))
         _, cache = l.forward(inputs)
         _, grads = l.backward(np.ones((2, 4)), cache)
-        # El gradiente de weights debe incluir 1.0 * self.weights
+        # Weight gradient must include 1.0 * self.weights
         self.assertTrue(np.any(grads["weights"] != 0))
 
 
@@ -157,14 +157,14 @@ class TestBatchNormalization(unittest.TestCase):
 
     def test_inference_uses_running_stats(self):
         bn = BatchNormalization(3)
-        # Training: acumula running stats
+        # Training: accumulate running stats
         for _ in range(50):
             x = np.random.randn(32, 3) * 2 + 1
             bn.forward(x, training=True)
-        # Inference con input constante
+        # Inference with constant input
         x_test = np.ones((10, 3))
         out, _ = bn.forward(x_test, training=False)
-        # No debe fallar y debe producir output válido
+        # Must not fail and must produce valid output
         self.assertEqual(out.shape, x_test.shape)
 
 

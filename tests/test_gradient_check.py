@@ -1,10 +1,10 @@
 """
-Validación numérica del backprop. Si pasa, la matemática es correcta.
+Numerical validation of backprop. If it passes, the math is correct.
 
-Cubre combinaciones críticas que antes podían fallar silenciosamente:
-- Tanh + MSE (capas profundas)
-- Softmax + CategoricalCrossEntropy (from_logits=False, Jacobiano real)
-- Linear + CategoricalCrossEntropy(from_logits=True) (atajo estable)
+Covers critical combinations that could previously fail silently:
+- Tanh + MSE (deep layers)
+- Softmax + CategoricalCrossEntropy (from_logits=False, real Jacobian)
+- Linear + CategoricalCrossEntropy(from_logits=True) (stable shortcut)
 """
 import unittest
 
@@ -14,7 +14,7 @@ from nnlib import MSE, CategoricalCrossEntropy, Dense, NeuralNetwork
 
 
 def _numeric_gradient(model, X, y, loss_fn, layer_idx, param_name, eps=1e-5):
-    """Gradiente numérico por diferencias finitas del parámetro dado."""
+    """Numerical gradient by finite differences of the given parameter."""
     param = model.layers[layer_idx].parameters()[param_name]
     numeric = np.zeros_like(param)
     it = np.nditer(param, flags=["multi_index"])
@@ -35,7 +35,7 @@ def _numeric_gradient(model, X, y, loss_fn, layer_idx, param_name, eps=1e-5):
 
 
 def _analytic_gradient(model, X, y, loss_fn, layer_idx, param_name):
-    """Gradiente analítico vía backward pass."""
+    """Analytic gradient via backward pass."""
     out, caches = model._forward(X, training=False)
     grad_out = loss_fn.derivative(out, y)
     grads_per_layer = model._backward(grad_out, caches)
@@ -61,12 +61,12 @@ class TestGradientCheck(unittest.TestCase):
                 numeric = _numeric_gradient(model, X, y, loss, i, name)
                 np.testing.assert_allclose(
                     analytic, numeric, atol=1e-4, rtol=1e-3,
-                    err_msg=f"Gradient check falló en capa {i} / {name}",
+                    err_msg=f"Gradient check failed in layer {i} / {name}",
                 )
 
     def test_softmax_cce_full_jacobian_path(self):
-        """Softmax + CCE(from_logits=False): usa el Jacobiano real de
-        Softmax. Esta combinación se rompía en v0.3 por el acoplamiento."""
+        """Softmax + CCE(from_logits=False): uses the real Jacobian of
+        Softmax. This combination was broken in v0.3 due to coupling."""
         np.random.seed(0)
         model = NeuralNetwork()
         model.add(Dense(3, input_size=2, activation="tanh"))
@@ -82,11 +82,11 @@ class TestGradientCheck(unittest.TestCase):
             numeric = _numeric_gradient(model, X, y, loss, i, name)
             np.testing.assert_allclose(
                 analytic, numeric, atol=1e-3, rtol=1e-2,
-                err_msg=f"Softmax+CCE full Jacobian gradient check falló en capa {i}",
+                err_msg=f"Softmax+CCE full Jacobian gradient check failed in layer {i}",
             )
 
     def test_linear_cce_from_logits_shortcut(self):
-        """Linear + CCE(from_logits=True): atajo numéricamente estable."""
+        """Linear + CCE(from_logits=True): numerically stable shortcut."""
         np.random.seed(0)
         model = NeuralNetwork()
         model.add(Dense(4, input_size=2, activation="relu"))
@@ -103,7 +103,7 @@ class TestGradientCheck(unittest.TestCase):
                 numeric = _numeric_gradient(model, X, y, loss, i, name)
                 np.testing.assert_allclose(
                     analytic, numeric, atol=1e-4, rtol=1e-3,
-                    err_msg=f"from_logits gradient check falló en capa {i} / {name}",
+                    err_msg=f"from_logits gradient check failed in layer {i} / {name}",
                 )
 
 

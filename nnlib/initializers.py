@@ -1,4 +1,4 @@
-"""Inicializadores con soporte para serialización JSON."""
+"""Initializers with JSON serialization support."""
 from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
@@ -94,11 +94,11 @@ def get_initializer(initializer) -> Initializer:
         key = initializer.lower()
         if key not in _INITIALIZERS:
             raise ValueError(
-                f"Inicializador desconocido: {initializer}. "
-                f"Opciones: {list(_INITIALIZERS.keys())}"
+                f"Unknown initializer: {initializer}. "
+                f"Options: {list(_INITIALIZERS.keys())}"
             )
         return _INITIALIZERS[key]()
     if isinstance(initializer, dict):
         cls = _INIT_CLASSES[initializer["class_name"]]
         return cls.from_config(initializer.get("config", {}))
-    raise TypeError(f"Tipo no soportado: {type(initializer)}")
+    raise TypeError(f"Unsupported type: {type(initializer)}")

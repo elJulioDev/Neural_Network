@@ -1,22 +1,22 @@
 """
-NeuralNetwork v0.4 — modelo secuencial con:
+NeuralNetwork v0.4 — sequential model with:
 
-1. Gestión externa de caches (ningún layer muta `self.inputs`/`self.z`).
-   Esto permite reutilizar una misma capa en múltiples inputs
-   (siamesas, triplet loss) sin romper el backprop.
-2. Propagación de shapes en `build()`: detecta incompatibilidades
-   dimensionales ANTES de entrenar (fail-fast).
-3. Serialización portable: `save_topology_json()` + `save_weights_npz()`
-   (o `save()` que combina ambos). Sin pickle en el camino crítico.
-4. Optimizador genérico: `_collect_grads_and_params()` arma tuplas
-   (layer_id, param_name, param, grad) sin asumir 'weights'/'biases'.
+1. External cache management (no layer mutates `self.inputs`/`self.z`).
+   This allows reusing the same layer on multiple inputs (siamese,
+   triplet loss) without breaking backprop.
+2. Shape propagation in `build()`: detects dimensional incompatibilities
+   BEFORE training (fail-fast).
+3. Portable serialization: `save_topology_json()` + `save_weights_npz()`
+   (or `save()` which combines both). No pickle in the critical path.
+4. Generic optimizer: `_collect_grads_and_params()` builds tuples
+   (layer_id, param_name, param, grad) without assuming 'weights'/'biases'.
 
-API principal (estilo Keras):
+Main API (Keras-style):
     model = NeuralNetwork()
     model.add(Dense(64, input_size=10, activation='relu'))
     model.add(Dense(1, activation='linear'))
     model.compile(optimizer='adam', loss='mse', metrics=['mae'])
-    model.build()                 # valida shapes (opcional, fit() lo hace)
+    model.build()                 # validates shapes (optional, fit() does it)
     history = model.fit(X, y, epochs=50, validation_split=0.2)
     model.save('my_model/')       # my_model/topology.json + weights.npz
     loaded = NeuralNetwork.load('my_model/')
@@ -68,15 +68,15 @@ class NeuralNetwork:
         self._input_shape: Optional[Tuple[Optional[int], int]] = None
 
     # ------------------------------------------------------------------
-    # Construcción
+    # Construction
     # ------------------------------------------------------------------
 
     def add(self, layer: BaseLayer) -> "NeuralNetwork":
         if not isinstance(layer, BaseLayer):
-            raise TypeError(f"Se esperaba BaseLayer, recibido {type(layer)}")
+            raise TypeError(f"Expected BaseLayer, received {type(layer)}")
         self.layers.append(layer)
-        # Si ya conocemos shape acumulado, vamos construyendo inmediato
-        # para fail-fast al añadir capas en secuencia.
+        # If we already know the accumulated shape, build immediately
+        # for fail-fast when adding layers in sequence.
         if self.layers and self._accumulated_output_shape() is not None:
             shape = self._accumulated_output_shape()
             if not getattr(layer, "_built", False):
@@ -84,13 +84,13 @@ class NeuralNetwork:
                     layer.build(shape)
                 except ValueError as e:
                     raise ValueError(
-                        f"Error al construir capa {len(self.layers)-1} "
+                        f"Error building layer {len(self.layers)-1} "
                         f"({type(layer).__name__}): {e}"
                     )
         return self
 
     def _accumulated_output_shape(self) -> Optional[Tuple[Optional[int], int]]:
-        """Devuelve el shape de salida del último layer construido."""
+        """Returns the output shape of the last built layer."""
         for layer in reversed(self.layers):
             if getattr(layer, "output_shape", None) is not None:
                 return layer.output_shape
@@ -103,11 +103,11 @@ class NeuralNetwork:
         activation=None,
         **kwargs,
     ) -> "NeuralNetwork":
-        """API legacy compatible con v0.2/v0.3."""
+        """Legacy API compatible with v0.2/v0.3."""
         if activation is None:
             activation = "sigmoid"
         if not self.layers and input_size is None:
-            raise ValueError("input_size requerido para la primera capa.")
+            raise ValueError("input_size required for the first layer.")
         self.add(Layer(num_neurons, input_size=input_size, activation=activation, **kwargs))
         return self
 
@@ -121,13 +121,13 @@ class NeuralNetwork:
 
     def build(self, input_shape: Optional[Tuple] = None) -> None:
         """
-        Propaga shapes a través de toda la red y valida compatibilidad.
+        Propagates shapes through the entire network and validates compatibility.
 
-        Fail-fast: si hay un mismatch dimensional, falla AQUÍ antes de
-        cargar datos o callbacks.
+        Fail-fast: if there is a dimensional mismatch, fails HERE before
+        loading data or callbacks.
         """
         if not self.layers:
-            raise RuntimeError("No hay capas que construir.")
+            raise RuntimeError("No layers to build.")
 
         if input_shape is None:
             first = self.layers[0]
@@ -135,8 +135,8 @@ class NeuralNetwork:
                 input_shape = first.input_shape
             else:
                 raise ValueError(
-                    "No se puede construir: la primera capa no declara input_size. "
-                    "Pasa `input_shape=(None, n_features)` a build()."
+                    "Cannot build: the first layer does not declare input_size. "
+                    "Pass `input_shape=(None, n_features)` to build()."
                 )
 
         shape = input_shape
@@ -146,12 +146,12 @@ class NeuralNetwork:
                 shape = layer.build(shape)
             except Exception as e:
                 raise ValueError(
-                    f"Error construyendo capa {i} ({type(layer).__name__}): {e}"
+                    f"Error building layer {i} ({type(layer).__name__}): {e}"
                 )
         self._built = True
 
     # ------------------------------------------------------------------
-    # Compilación
+    # Compilation
     # ------------------------------------------------------------------
 
     def compile(
@@ -165,19 +165,19 @@ class NeuralNetwork:
         self.metrics = [get_metric(m) for m in (metrics or [])]
         self._compiled = True
 
-        # Si tenemos shape conocido, corremos build() aquí para fail-fast
+        # If we have a known shape, run build() here for fail-fast
         if not self._built and self._accumulated_output_shape() is not None:
             try:
                 self.build()
             except Exception as e:
-                logger.warning(f"build() diferido: {e}")
+                logger.warning(f"build() deferred: {e}")
 
     # ------------------------------------------------------------------
-    # Forward / Backward — con gestión EXTERNA de caches
+    # Forward / Backward — with EXTERNAL cache management
     # ------------------------------------------------------------------
 
     def _forward(self, inputs: np.ndarray, training: bool = True) -> Tuple[np.ndarray, List[Dict]]:
-        """Forward pass. Retorna (output, lista_de_caches) — NADA se guarda en self.layers."""
+        """Forward pass. Returns (output, list_of_caches) — NOTHING is stored in self.layers."""
         caches = []
         x = inputs
         for layer in self.layers:
@@ -187,9 +187,9 @@ class NeuralNetwork:
 
     def _backward(self, loss_gradient: np.ndarray, caches: List[Dict]) -> List[Tuple[BaseLayer, Dict[str, np.ndarray]]]:
         """
-        Backward pass. Devuelve lista de (layer, grads_dict) en orden
-        de adelante hacia atrás. El gradiente fluye usando el cache
-        específico de cada paso forward.
+        Backward pass. Returns list of (layer, grads_dict) in
+        forward-to-backward order. The gradient flows using the
+        specific cache of each forward step.
         """
         grads_per_layer = [None] * len(self.layers)
         grad = loss_gradient
@@ -204,10 +204,9 @@ class NeuralNetwork:
         self, grads_per_layer
     ) -> List[Tuple[int, str, np.ndarray, np.ndarray]]:
         """
-        Reúne tuplas (layer_id, param_name, param_array, grad_array)
-        a partir del dict de parámetros de cada capa y el dict de
-        gradientes devueltos por backward. Indepedente de los nombres
-        de parámetros concretos.
+        Collects tuples (layer_id, param_name, param_array, grad_array)
+        from the parameter dict of each layer and the gradient dict
+        returned by backward. Independent of concrete parameter names.
         """
         collected = []
         for layer, grads in grads_per_layer:
@@ -217,8 +216,8 @@ class NeuralNetwork:
             for name, param in params.items():
                 if name not in grads:
                     raise RuntimeError(
-                        f"Capa {type(layer).__name__}: parámetro '{name}' "
-                        f"sin gradiente correspondiente."
+                        f"Layer {type(layer).__name__}: parameter '{name}' "
+                        f"has no corresponding gradient."
                     )
                 collected.append((id(layer), name, param, grads[name]))
         return collected
@@ -227,11 +226,11 @@ class NeuralNetwork:
         return sum(layer.regularization_loss() for layer in self.layers)
 
     # ------------------------------------------------------------------
-    # Inferencia (alias público)
+    # Inference (public alias)
     # ------------------------------------------------------------------
 
     def forward(self, inputs: np.ndarray, training: bool = False) -> np.ndarray:
-        """API pública: devuelve sólo el output (descarta caches)."""
+        """Public API: returns only the output (discards caches)."""
         output, _ = self._forward(inputs, training=training)
         return output
 
@@ -250,7 +249,7 @@ class NeuralNetwork:
         return np.argmax(probs, axis=1)
 
     # ------------------------------------------------------------------
-    # Entrenamiento
+    # Training
     # ------------------------------------------------------------------
 
     def fit(
@@ -268,12 +267,12 @@ class NeuralNetwork:
         self._ensure_ready()
         self._validate_input(x, y)
 
-        # Fail-fast: asegura shapes consistentes antes del training loop
+        # Fail-fast: ensures consistent shapes before the training loop
         if not self._built:
             self.build((None, x.shape[1]))
         elif self._input_shape is not None and x.shape[1] != self._input_shape[-1]:
             raise ValueError(
-                f"X tiene {x.shape[1]} features, el modelo espera {self._input_shape[-1]}."
+                f"X has {x.shape[1]} features, the model expects {self._input_shape[-1]}."
             )
 
         # Validation setup
@@ -310,7 +309,7 @@ class NeuralNetwork:
                 for cb in callbacks:
                     cb.on_batch_begin(batch_idx)
 
-                # Forward con caches externos
+                # Forward with external caches
                 output, caches = self._forward(x_batch, training=True)
                 loss = self.loss_function.calculate(output, y_batch)
                 loss += self._regularization_loss() / steps
@@ -319,11 +318,11 @@ class NeuralNetwork:
                 for m in self.metrics:
                     metric_sums[m.name] += m(output, y_batch)
 
-                # Backward con caches explícitos
+                # Backward with explicit caches
                 loss_grad = self.loss_function.derivative(output, y_batch)
                 grads_per_layer = self._backward(loss_grad, caches)
 
-                # Optimizer: interfaz genérica por (id, name, param, grad)
+                # Optimizer: generic interface via (id, name, param, grad)
                 grads_and_params = self._collect_grads_and_params(grads_per_layer)
                 self.optimizer.apply_gradients(grads_and_params)
 
@@ -358,7 +357,7 @@ class NeuralNetwork:
         return history.history
 
     def train(self, x, y, epochs=1000, batch_size=32, verbose=1):
-        """API legacy."""
+        """Legacy API."""
         if not self._compiled and self.loss_function is not None and self.optimizer is not None:
             self._compiled = True
         return self.fit(x, y, epochs=epochs, batch_size=batch_size, verbose=verbose)
@@ -384,7 +383,7 @@ class NeuralNetwork:
         return result
 
     # ------------------------------------------------------------------
-    # Serialización: topología JSON + pesos NPZ
+    # Serialization: JSON topology + NPZ weights
     # ------------------------------------------------------------------
 
     def get_config(self) -> Dict[str, Any]:
@@ -426,8 +425,8 @@ class NeuralNetwork:
         return cls.from_config(json.loads(json_str))
 
     def _all_state_arrays(self) -> Dict[str, np.ndarray]:
-        """Reúne TODOS los arrays (entrenables + no entrenables) con
-        claves únicas 'layer_{i}/{param_name}'."""
+        """Collects ALL arrays (trainable + non-trainable) with
+        unique keys 'layer_{i}/{param_name}'."""
         state = {}
         for i, layer in enumerate(self.layers):
             for name, arr in layer.parameters().items():
@@ -437,11 +436,11 @@ class NeuralNetwork:
         return state
 
     def save_weights(self, filepath: str) -> None:
-        """Guarda parámetros + estado no entrenable en NPZ."""
+        """Saves parameters + non-trainable state to NPZ."""
         np.savez(filepath, **self._all_state_arrays())
 
     def load_weights(self, filepath: str) -> None:
-        """Carga pesos. Requiere misma arquitectura."""
+        """Loads weights. Requires same architecture."""
         data = np.load(filepath)
         for i, layer in enumerate(self.layers):
             # Trainable params
@@ -450,12 +449,12 @@ class NeuralNetwork:
             for name in params:
                 key = f"layer_{i}/{name}"
                 if key not in data.files:
-                    raise KeyError(f"No se encontró '{key}' en {filepath}.")
+                    raise KeyError(f"'{key}' not found in {filepath}.")
                 new_params[name] = data[key]
-            # Asignar in-place mediante set_parameters si existe, si no
-            # modificamos las referencias directamente.
+            # Assign in-place via set_parameters if it exists, otherwise
+            # modify the references directly.
             for name, arr in new_params.items():
-                params[name][...] = arr  # in-place para mantener refs
+                params[name][...] = arr  # in-place to maintain refs
 
             # Non-trainable state
             for name, arr in layer.non_trainable_state().items():
@@ -465,8 +464,8 @@ class NeuralNetwork:
 
     def save(self, directory: str) -> None:
         """
-        Guarda en formato portable: `topology.json` + `weights.npz`.
-        Sin pickle: sobrevive a refactors y es seguro compartir.
+        Saves in portable format: `topology.json` + `weights.npz`.
+        No pickle: survives refactors and is safe to share.
         """
         os.makedirs(directory, exist_ok=True)
         with open(os.path.join(directory, "topology.json"), "w", encoding="utf-8") as f:
@@ -480,12 +479,12 @@ class NeuralNetwork:
         model.load_weights(os.path.join(directory, "weights.npz"))
         return model
 
-    # API legacy pickle (mantenida por compatibilidad, desaconsejada)
+    # Legacy pickle API (kept for compatibility, not recommended)
     def save_model(self, filepath: str) -> None:
-        """Serialización legacy via pickle. Prefer `save(directory)`."""
+        """Legacy serialization via pickle. Prefer `save(directory)`."""
         logger.warning(
-            "save_model() usa pickle y es frágil. Usa save('dir/') para "
-            "persistencia portable (JSON + NPZ)."
+            "save_model() uses pickle and is fragile. Use save('dir/') for "
+            "portable persistence (JSON + NPZ)."
         )
         with open(filepath, "wb") as f:
             pickle.dump(self, f)
@@ -495,9 +494,9 @@ class NeuralNetwork:
         with open(filepath, "rb") as f:
             return pickle.load(f)
 
-    # Alias para retrocompatibilidad con v0.3
+    # Alias for backward compatibility with v0.3
     def get_weights(self) -> List[np.ndarray]:
-        """Lista plana de parámetros entrenables (mismo orden que set_weights)."""
+        """Flat list of trainable parameters (same order as set_weights)."""
         result = []
         for layer in self.layers:
             for _, arr in layer.parameters().items():
@@ -517,7 +516,7 @@ class NeuralNetwork:
                 idx += 1
 
     # ------------------------------------------------------------------
-    # Utilidades
+    # Utilities
     # ------------------------------------------------------------------
 
     def summary(self) -> None:
@@ -539,14 +538,14 @@ class NeuralNetwork:
 
     def _ensure_ready(self) -> None:
         if self.loss_function is None:
-            raise RuntimeError("Loss no configurada. Llama compile() primero.")
+            raise RuntimeError("Loss not configured. Call compile() first.")
         if self.optimizer is None:
-            raise RuntimeError("Optimizer no configurado. Llama compile() primero.")
+            raise RuntimeError("Optimizer not configured. Call compile() first.")
         if not self.layers:
-            raise RuntimeError("Modelo sin capas.")
+            raise RuntimeError("Model without layers.")
 
     def _validate_input(self, x: np.ndarray, y: np.ndarray) -> None:
         if x.ndim != 2:
-            raise ValueError(f"X debe ser 2D (batch, features). Recibido: {x.shape}")
+            raise ValueError(f"X must be 2D (batch, features). Received: {x.shape}")
         if x.shape[0] != y.shape[0]:
-            raise ValueError("X e y tienen distinto número de muestras.")
+            raise ValueError("X and y have different number of samples.")

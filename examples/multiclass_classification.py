@@ -1,10 +1,10 @@
 """
-Demo multiclase con BatchNorm, Dropout, callbacks y from_logits.
+Multiclass demo with BatchNorm, Dropout, callbacks and from_logits.
 
-- Capa final Linear + CategoricalCrossEntropy(from_logits=True):
-  camino numéricamente estable que evita el acoplamiento Softmax/Loss.
-- L2 regularización, gradient clipping, EarlyStopping, ReduceLROnPlateau.
-- save(dir) + load(dir) con topology JSON + pesos NPZ.
+- Final Linear layer + CategoricalCrossEntropy(from_logits=True):
+  numerically stable path that avoids Softmax/Loss coupling.
+- L2 regularization, gradient clipping, EarlyStopping, ReduceLROnPlateau.
+- save(dir) + load(dir) with topology JSON + NPZ weights.
 """
 import os
 import tempfile
@@ -36,7 +36,7 @@ def main():
     y_oh = to_categorical(y, num_classes=4)
     X_train, X_test, y_train, y_test = train_test_split(X, y_oh, test_size=0.2, random_state=0)
 
-    # Capa final 'linear' — la loss aplica softmax internamente
+    # Final 'linear' layer — the loss applies softmax internally
     model = NeuralNetwork()
     model.add(Dense(32, input_size=8, activation="relu", kernel_regularizer=L2(0.001)))
     model.add(BatchNormalization(32))
@@ -64,18 +64,18 @@ def main():
         verbose=1,
     )
 
-    # Evaluación: necesitamos accuracy, así que aplicamos softmax manualmente
+    # Evaluation: we need accuracy, so we apply softmax manually
     logits_test = model.predict(X_test)
     probs = np.exp(logits_test - logits_test.max(axis=1, keepdims=True))
     probs = probs / probs.sum(axis=1, keepdims=True)
     acc = np.mean(np.argmax(probs, axis=1) == np.argmax(y_test, axis=1))
     print(f"\n--- Test accuracy: {acc:.4f}")
 
-    # Persistencia portable
+    # Portable persistence
     with tempfile.TemporaryDirectory() as tmp:
         path = os.path.join(tmp, "multiclass_model")
         model.save(path)
-        print(f"Modelo guardado en {path}/")
+        print(f"Model saved to {path}/")
         loaded = NeuralNetwork.load(path)
         loaded_logits = loaded.predict(X_test)
         assert np.allclose(logits_test, loaded_logits)

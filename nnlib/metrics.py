@@ -1,4 +1,4 @@
-"""Métricas con soporte de serialización."""
+"""Metrics with serialization support."""
 from typing import Any, Dict
 
 import numpy as np
@@ -95,9 +95,9 @@ def get_metric(metric) -> Metric:
     if isinstance(metric, str):
         key = metric.lower()
         if key not in _METRICS:
-            raise ValueError(f"Métrica desconocida: {metric}. Opciones: {list(_METRICS.keys())}")
+            raise ValueError(f"Unknown metric: {metric}. Options: {list(_METRICS.keys())}")
         return _METRICS[key]()
     if isinstance(metric, dict):
         cls = _METRIC_CLASSES[metric["class_name"]]
         return cls.from_config(metric.get("config", {}))
-    raise TypeError(f"Tipo no soportado: {type(metric)}")
+    raise TypeError(f"Unsupported type: {type(metric)}")

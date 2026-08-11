@@ -1,29 +1,29 @@
 """
-Capas — versión v0.4 con estado externo y API genérica de parámetros.
+Layers — v0.4 with external state and generic parameter API.
 
-Cambios clave respecto a v0.3:
+Key changes from v0.3:
 
-1. `forward(inputs, training) -> (output, cache)`: ya no muta `self`. El
-   cache es un dict con todo lo que `backward` necesita. Esto permite
-   reutilizar una misma capa en dos entradas (redes siamesas) sin que la
-   segunda pisotee el cache de la primera.
+1. `forward(inputs, training) -> (output, cache)`: no longer mutates `self`.
+   The cache is a dict with everything `backward` needs. This allows
+   reusing the same layer on two inputs (siamese networks) without the
+   second overwriting the cache of the first.
 
-2. `backward(d_output, cache) -> (d_input, gradients_dict)`: devuelve
-   los gradientes en un diccionario nombrado por parámetro. El optimizer
-   ya no busca atributos hardcodeados `weights`/`biases`.
+2. `backward(d_output, cache) -> (d_input, gradients_dict)`: returns
+   gradients in a dictionary named by parameter. The optimizer no longer
+   looks for hardcoded `weights`/`biases` attributes.
 
-3. `parameters() -> Dict[str, ndarray]`: el optimizer recibe un
-   diccionario genérico. Una capa puede tener 1, 2, 3 ó N parámetros
-   distintos sin tocar el código del optimizer.
+3. `parameters() -> Dict[str, ndarray]`: the optimizer receives a generic
+   dictionary. A layer can have 1, 2, 3 or N different parameters without
+   touching the optimizer code.
 
-4. `build(input_shape) -> output_shape`: las capas declaran su shape de
-   salida dado un shape de entrada. El modelo propaga shapes antes de
-   entrenar, así las incompatibilidades dimensionales se detectan en
-   `compile()` en vez de en la primera multiplicación matricial.
+4. `build(input_shape) -> output_shape`: layers declare their output shape
+   given an input shape. The model propagates shapes before training, so
+   dimensional incompatibilities are detected in `compile()` rather than
+   in the first matrix multiplication.
 
-5. `get_config() / from_config()`: serialización JSON sin pickle.
+5. `get_config() / from_config()`: JSON serialization without pickle.
 
-Capas: Dense (alias Layer), Dropout, BatchNormalization.
+Layers: Dense (alias Layer), Dropout, BatchNormalization.
 """
 from typing import Any, Dict, Optional, Tuple
 
@@ -39,27 +39,27 @@ ParamDict = Dict[str, np.ndarray]
 
 class BaseLayer:
     """
-    Interfaz común.
+    Common interface.
 
-    Contrato:
-    - `build(input_shape)` se llama UNA vez antes del primer forward.
-      Puede llamarse con `input_shape=None` si no requiere construir
-      pesos (Dropout). Retorna el shape de salida.
-    - `forward` y `backward` son idealmente puros respecto al estado
-      entrenable. Para estadísticas no-entrenables (running_mean en
-      BatchNorm) sí se permite mutación.
-    - `parameters()` devuelve un dict de REFERENCIAS (no copias) para
-      que el optimizer modifique in-place.
+    Contract:
+    - `build(input_shape)` is called ONCE before the first forward.
+      May be called with `input_shape=None` if no weights are needed
+      (Dropout). Returns the output shape.
+    - `forward` and `backward` are ideally pure with respect to trainable
+      state. For non-trainable statistics (running_mean in BatchNorm),
+      mutation is allowed.
+    - `parameters()` returns a dict of REFERENCES (not copies) so the
+      optimizer can modify in-place.
     """
 
     trainable: bool = False
-    # Shape de entrada/salida (fijados en build). (None, features).
+    # Input/output shape (fixed in build). (None, features).
     input_shape: Optional[Tuple[Optional[int], int]] = None
     output_shape: Optional[Tuple[Optional[int], int]] = None
 
     def build(self, input_shape: Tuple[Optional[int], int]) -> Tuple[Optional[int], int]:
         self.input_shape = input_shape
-        self.output_shape = input_shape  # default: identidad
+        self.output_shape = input_shape  # default: identity
         return self.output_shape
 
     def forward(self, inputs: np.ndarray, training: bool = True) -> Tuple[np.ndarray, Cache]:
@@ -69,11 +69,11 @@ class BaseLayer:
         raise NotImplementedError
 
     def parameters(self) -> ParamDict:
-        """Parámetros ENTRENABLES (dict de referencias)."""
+        """TRAINABLE parameters (dict of references)."""
         return {}
 
     def non_trainable_state(self) -> ParamDict:
-        """Estado no entrenable persistente (ej. running_mean)."""
+        """Persistent non-trainable state (e.g. running_mean)."""
         return {}
 
     def regularization_loss(self) -> float:
@@ -89,17 +89,17 @@ class BaseLayer:
 
 class Layer(BaseLayer):
     """
-    Capa totalmente conectada (Dense).
+    Fully connected layer (Dense).
 
-    Parámetros entrenables: 'weights', 'biases'.
+    Trainable parameters: 'weights', 'biases'.
 
     Args:
-        n_neurons: tamaño de salida.
-        input_size: opcional. Si se omite, se infiere en build().
-        activation: instancia, string ('relu', 'sigmoid'...) o dict de config.
-        kernel_initializer: estrategia de init para los pesos.
-        bias_initializer: estrategia de init para los biases.
-        kernel_regularizer: regularizador opcional sobre los pesos.
+        n_neurons: output size.
+        input_size: optional. If omitted, inferred in build().
+        activation: instance, string ('relu', 'sigmoid'...) or config dict.
+        kernel_initializer: initialization strategy for weights.
+        bias_initializer: initialization strategy for biases.
+        kernel_regularizer: optional regularizer on weights.
     """
 
     trainable = True
@@ -131,7 +131,7 @@ class Layer(BaseLayer):
         input_size = input_shape[-1]
         if input_size is None:
             raise ValueError(
-                f"{type(self).__name__}: input_shape debe tener dimensión de features definida."
+                f"{type(self).__name__}: input_shape must have a defined feature dimension."
             )
         self.weights = self._kernel_initializer((input_size, self.n_neurons))
         self.biases = self._bias_initializer((1, self.n_neurons))
@@ -143,11 +143,11 @@ class Layer(BaseLayer):
     def forward(self, inputs, training=True):
         if not self._built:
             self.build((None, inputs.shape[1]))
-        # Validación fail-fast de shape
+        # Fail-fast shape validation
         if inputs.shape[1] != self.weights.shape[0]:
             raise ValueError(
-                f"{type(self).__name__}: esperaba features={self.weights.shape[0]}, "
-                f"recibió {inputs.shape[1]}."
+                f"{type(self).__name__}: expected features={self.weights.shape[0]}, "
+                f"received {inputs.shape[1]}."
             )
         z = inputs @ self.weights + self.biases
         output, act_cache = self.activation.forward(z)
@@ -155,14 +155,14 @@ class Layer(BaseLayer):
         return output, cache
 
     def backward(self, d_output, cache):
-        # Propaga por la activación primero (usando el cache de la activación)
+        # Propagate through activation first (using the activation cache)
         d_z = self.activation.backward(d_output, cache["activation_cache"])
         inputs = cache["inputs"]
 
         dweights = inputs.T @ d_z
         dbiases = np.sum(d_z, axis=0, keepdims=True)
 
-        # Regularización sobre los pesos (no sobre biases)
+        # Regularization on weights (not on biases)
         if self.kernel_regularizer is not None:
             dweights = dweights + self.kernel_regularizer.gradient(self.weights)
 
@@ -196,21 +196,21 @@ class Layer(BaseLayer):
         }
 
 
-# Alias estilo Keras
+# Keras-style alias
 Dense = Layer
 
 
 class Dropout(BaseLayer):
     """
-    Dropout invertido (escala 1/keep_prob en training). No tiene
-    parámetros entrenables. Identidad en inferencia.
+    Inverted dropout (scales by 1/keep_prob during training). No trainable
+    parameters. Identity at inference.
     """
 
     trainable = False
 
     def __init__(self, rate: float):
         if not 0.0 <= rate < 1.0:
-            raise ValueError("rate debe estar en [0, 1).")
+            raise ValueError("rate must be in [0, 1).")
         self.rate = rate
 
     def build(self, input_shape):
@@ -237,11 +237,11 @@ class Dropout(BaseLayer):
 
 class BatchNormalization(BaseLayer):
     """
-    Normaliza por mini-batch. Mantiene running_mean/running_var para
-    inferencia.
+    Mini-batch normalization. Maintains running_mean/running_var for
+    inference.
 
-    Parámetros entrenables: 'gamma', 'beta'.
-    Estado no entrenable: 'running_mean', 'running_var'.
+    Trainable parameters: 'gamma', 'beta'.
+    Non-trainable state: 'running_mean', 'running_var'.
     """
 
     trainable = True
@@ -268,7 +268,7 @@ class BatchNormalization(BaseLayer):
     def build(self, input_shape):
         n = input_shape[-1]
         if n is None:
-            raise ValueError("BatchNormalization: features indefinido en build().")
+            raise ValueError("BatchNormalization: features undefined in build().")
         self.n_features = n
         self.gamma = np.ones((1, n))
         self.beta = np.zeros((1, n))
@@ -288,9 +288,9 @@ class BatchNormalization(BaseLayer):
             inv_std = 1.0 / np.sqrt(var + self.epsilon)
             x_hat = (inputs - mean) * inv_std
 
-            # Mutación de estadísticas móviles — esto SÍ es estado
-            # persistente (como en Keras/PyTorch). No interfiere con
-            # reutilización multi-entrada en modo inference.
+            # Mutation of running statistics — this IS persistent state
+            # (as in Keras/PyTorch). It does not interfere with
+            # multi-input reuse in inference mode.
             self.running_mean = (
                 self.momentum * self.running_mean + (1 - self.momentum) * mean
             )

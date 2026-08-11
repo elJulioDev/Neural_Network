@@ -6,7 +6,7 @@ from nnlib.optimizers import SGD, AdaGrad, Adam, RMSprop, get_optimizer
 
 
 def make_step(opt, param, grad, layer_id=1, name="w"):
-    """Helper: aplica un step del optimizer sobre (param, grad)."""
+    """Helper: applies one optimizer step on (param, grad)."""
     opt.apply_gradients([(layer_id, name, param, grad)])
 
 
@@ -83,7 +83,7 @@ class TestGradientClipping(unittest.TestCase):
 
 
 class TestGenericInterface(unittest.TestCase):
-    """Verifica que optimizers no dependan de nombres específicos."""
+    """Verifies that optimizers do not depend on specific names."""
 
     def test_handles_arbitrary_param_names(self):
         opt = SGD(learning_rate=0.1)

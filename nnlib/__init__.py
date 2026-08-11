@@ -1,4 +1,4 @@
-"""NeuralNetwork v1.0 — librería de Deep Learning vectorizada."""
+"""NeuralNetwork v1.0 — vectorized Deep Learning library."""
 from .activations import (
     ELU,
     Activation,

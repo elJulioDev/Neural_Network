@@ -1,17 +1,17 @@
 """
-Demo de red siamesa — demuestra que una MISMA capa puede procesar dos
-inputs distintos en paralelo sin corromperse.
+Siamese network demo — demonstrates that the SAME layer can process two
+different inputs in parallel without corruption.
 
-En v0.3 esto era imposible porque cada forward pasaba el cache a
-`self.inputs`/`self.z` de la capa, por lo que la segunda entrada
-pisoteaba a la primera y el backward producía gradientes incorrectos.
+In v0.3 this was impossible because each forward pass stored the cache in
+`self.inputs`/`self.z` of the layer, so the second input would overwrite
+the first and the backward pass would produce incorrect gradients.
 
-En v0.4, forward devuelve `(output, cache)` y backward recibe el
-cache explícitamente. El mismo layer puede usarse N veces con N caches
-independientes.
+In v0.4, forward returns `(output, cache)` and backward receives the
+cache explicitly. The same layer can be used N times with N independent
+caches.
 
-Aquí construimos manualmente un embedder siamés: una red compartida
-procesa dos inputs, y una loss contrastiva simple compara sus embeddings.
+Here we manually build a siamese embedder: a shared network processes
+two inputs, and a simple contrastive loss compares their embeddings.
 """
 import numpy as np
 
@@ -20,7 +20,7 @@ from nnlib.activations import ReLU, Tanh
 
 
 class SiameseEncoder:
-    """Encoder con pesos compartidos aplicado a dos entradas."""
+    """Encoder with shared weights applied to two inputs."""
 
     def __init__(self, input_dim: int, hidden_dim: int = 16, embed_dim: int = 4):
         self.fc1 = Dense(hidden_dim, input_dim, activation=ReLU())
@@ -39,18 +39,18 @@ class SiameseEncoder:
 
 
 def contrastive_loss(z1, z2, y, margin=1.0):
-    """Loss contrastiva clásica: pares similares (y=1) -> cercanos."""
+    """Classic contrastive loss: similar pairs (y=1) -> close."""
     diff = z1 - z2
     dist_sq = np.sum(diff ** 2, axis=1, keepdims=True)
     dist = np.sqrt(dist_sq + 1e-12)
 
     loss = np.mean(y * dist_sq + (1 - y) * np.maximum(0, margin - dist) ** 2)
 
-    # Gradientes analíticos respecto a z1 (z2 es simétrico)
+    # Analytic gradients with respect to z1 (z2 is symmetric)
     N = y.shape[0]
     dz1_sim = 2 * diff * y / N
     margin_term = np.maximum(0, margin - dist)
-    # derivada de (margin - dist)^2 respecto a diff
+    # derivative of (margin - dist)^2 with respect to diff
     dz1_dis = -2 * margin_term * diff / (dist + 1e-12) * (1 - y) / N
     dz1 = dz1_sim + dz1_dis
     return float(loss), dz1, -dz1
@@ -59,7 +59,7 @@ def contrastive_loss(z1, z2, y, margin=1.0):
 def main():
     np.random.seed(0)
 
-    # Dataset sintético: pares similares dentro del mismo cluster.
+    # Synthetic dataset: similar pairs within the same cluster.
     def make_pair_batch(n=64):
         c1 = np.random.randn(n // 2, 8) + 3
         c2 = np.random.randn(n // 2, 8) - 3
@@ -78,17 +78,17 @@ def main():
     for epoch in range(50):
         xa, xb, y = make_pair_batch(128)
 
-        # Forward por las DOS entradas con la MISMA instancia de capa.
+        # Forward through BOTH inputs with the SAME layer instance.
         z1, cache_a = encoder.encode(xa)
         z2, cache_b = encoder.encode(xb)
 
         loss, dz1, dz2 = contrastive_loss(z1, z2, y)
 
-        # Backward de ambas ramas: cada una usa su cache respectivo
+        # Backward of both branches: each uses its respective cache
         _, g1a, g2a = encoder.backward_encode(dz1, cache_a)
         _, g1b, g2b = encoder.backward_encode(dz2, cache_b)
 
-        # Gradientes combinados (sum sobre ramas = parámetros compartidos)
+        # Combined gradients (sum over branches = shared parameters)
         for name in ("weights", "biases"):
             encoder.fc1.parameters()[name][...] = (
                 encoder.fc1.parameters()[name] - lr * (g1a[name] + g1b[name])
@@ -100,7 +100,7 @@ def main():
         if epoch % 10 == 0:
             print(f"Epoch {epoch:2d} - loss: {loss:.4f}")
 
-    print("\nRed siamesa entrenada con éxito. State isolation verificado.")
+    print("\nSiamese network trained successfully. State isolation verified.")
 
 
 if __name__ == "__main__":

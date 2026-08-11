@@ -1,21 +1,21 @@
 """
-Funciones de pérdida con soporte `from_logits`.
+Loss functions with `from_logits` support.
 
-`from_logits=True`: la pérdida recibe los logits crudos (sin activación
-final) y aplica internamente sigmoid o softmax de forma numéricamente
-estable. Su derivada usa el atajo matemático (pred - y) sin necesidad de
-pasar por la derivada de la activación.
+`from_logits=True`: the loss receives raw logits (without final activation)
+and applies sigmoid or softmax internally in a numerically stable way.
+Its derivative uses the mathematical shortcut (pred - y) without needing
+to go through the activation derivative.
 
-`from_logits=False` (default): la pérdida recibe probabilidades ya
-activadas. El gradiente se calcula sobre esas probabilidades y la red
-debe propagarlo hacia atrás por la activación (que ahora lo hace
-correctamente gracias al Jacobiano completo de Softmax).
+`from_logits=False` (default): the loss receives already activated
+probabilities. The gradient is computed over those probabilities and the
+network must propagate it back through the activation (which now does so
+correctly thanks to the full Softmax Jacobian).
 
-El flag elimina el ACOPLAMIENTO MATEMÁTICO OCULTO que asumía que la
-capa anterior siempre era Softmax: ahora el usuario declara
-explícitamente qué espera recibir la loss.
+The flag eliminates the HIDDEN MATHEMATICAL COUPLING that assumed the
+previous layer was always Softmax: now the user explicitly declares what
+the loss expects to receive.
 
-Disponibles: MSE, MAE, Huber, BinaryCrossEntropy,
+Available: MSE, MAE, Huber, BinaryCrossEntropy,
 CategoricalCrossEntropy, SparseCategoricalCrossEntropy.
 """
 from typing import Any, Dict
@@ -39,7 +39,7 @@ def _softmax_stable(x: np.ndarray) -> np.ndarray:
 
 
 def _log_softmax_stable(x: np.ndarray) -> np.ndarray:
-    """log(softmax(x)) estable: x - max - log(sum(exp(x - max)))."""
+    """log(softmax(x)) stable: x - max - log(sum(exp(x - max)))."""
     x_shift = x - np.max(x, axis=1, keepdims=True)
     return x_shift - np.log(np.sum(np.exp(x_shift), axis=1, keepdims=True))
 
@@ -76,7 +76,7 @@ class MAE(Loss):
 
 
 class Huber(Loss):
-    """Cuadrático cerca de 0, lineal lejos. Robusto a outliers."""
+    """Quadratic near 0, linear far away. Robust to outliers."""
 
     def __init__(self, delta: float = 1.0):
         self.delta = delta
@@ -100,12 +100,12 @@ class Huber(Loss):
 
 class BinaryCrossEntropy(Loss):
     """
-    Clasificación binaria.
+    Binary classification.
 
     Args:
-        from_logits: si True, espera logits crudos y aplica sigmoid
-            internamente. Gradiente = (sigmoid(x) - y) / N.
-            Si False, espera probabilidades en [0, 1].
+        from_logits: if True, expects raw logits and applies sigmoid
+            internally. Gradient = (sigmoid(x) - y) / N.
+            If False, expects probabilities in [0, 1].
     """
 
     def __init__(self, from_logits: bool = False):
@@ -113,7 +113,7 @@ class BinaryCrossEntropy(Loss):
 
     def calculate(self, output, y):
         if self.from_logits:
-            # log(1 + exp(-|x|)) + max(x, 0) - x*y — forma estable
+            # log(1 + exp(-|x|)) + max(x, 0) - x*y — stable form
             x = output
             return float(
                 np.mean(np.maximum(x, 0) - x * y + np.log1p(np.exp(-np.abs(x))))
@@ -133,13 +133,13 @@ class BinaryCrossEntropy(Loss):
 
 class CategoricalCrossEntropy(Loss):
     """
-    Multiclase con labels one-hot.
+    Multi-class with one-hot labels.
 
     Args:
-        from_logits: si True, espera logits crudos y aplica softmax
-            internamente. Gradiente = (softmax(x) - y) / N. Este es el
-            camino numéricamente estable y computacionalmente eficiente.
-            Si False, espera probabilidades.
+        from_logits: if True, expects raw logits and applies softmax
+            internally. Gradient = (softmax(x) - y) / N. This is the
+            numerically stable and computationally efficient path.
+            If False, expects probabilities.
     """
 
     def __init__(self, from_logits: bool = False):
@@ -154,9 +154,9 @@ class CategoricalCrossEntropy(Loss):
     def derivative(self, output, y):
         if self.from_logits:
             return (_softmax_stable(output) - y) / y.shape[0]
-        # Derivada "honesta" de -sum(y*log(p)) respecto a p, sin
-        # asumir Softmax atrás: -y/p / N. La red propagará por el
-        # Jacobiano real de la activación.
+        # "Honest" derivative of -sum(y*log(p)) w.r.t. p, without
+        # assuming Softmax behind it: -y/p / N. The network will propagate
+        # through the real Jacobian of the activation.
         p = np.clip(output, _EPSILON, 1 - _EPSILON)
         return -(y / p) / y.shape[0]
 
@@ -165,7 +165,7 @@ class CategoricalCrossEntropy(Loss):
 
 
 class SparseCategoricalCrossEntropy(Loss):
-    """Multiclase con labels como índices enteros."""
+    """Multi-class with integer index labels."""
 
     def __init__(self, from_logits: bool = False):
         self.from_logits = from_logits
@@ -224,11 +224,11 @@ def get_loss(loss) -> Loss:
     if isinstance(loss, str):
         key = loss.lower()
         if key not in _LOSSES:
-            raise ValueError(f"Loss desconocida: {loss}. Opciones: {list(_LOSSES.keys())}")
+            raise ValueError(f"Unknown loss: {loss}. Options: {list(_LOSSES.keys())}")
         return _LOSSES[key]()
     if isinstance(loss, dict):
         name = loss["class_name"]
         if name not in _LOSS_CLASSES:
-            raise ValueError(f"Loss desconocida en config: {name}")
+            raise ValueError(f"Unknown loss in config: {name}")
         return _LOSS_CLASSES[name].from_config(loss.get("config", {}))
-    raise TypeError(f"Tipo no soportado: {type(loss)}")
+    raise TypeError(f"Unsupported type: {type(loss)}")

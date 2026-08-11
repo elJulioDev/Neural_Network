@@ -1,4 +1,4 @@
-"""Regularizadores L1, L2, L1L2 con soporte de serialización."""
+"""L1, L2, L1L2 regularizers with serialization support."""
 from typing import Any, Dict
 
 import numpy as np
@@ -71,4 +71,4 @@ def get_regularizer(reg):
     if isinstance(reg, dict):
         cls = _REG_CLASSES[reg["class_name"]]
         return cls.from_config(reg.get("config", {}))
-    raise TypeError(f"Regularizador inválido: {type(reg)}")
+    raise TypeError(f"Invalid regularizer: {type(reg)}")

@@ -1,18 +1,18 @@
 """
-Funciones de activación — versión stateless (v0.4+).
+Activation functions — stateless version (v0.4+).
 
-Las activaciones ya NO guardan estado en la instancia. El método
-`forward` devuelve `(output, cache)` y `backward(d_output, cache)`
-usa ese cache explícito. Esto permite:
-  - Reutilizar una misma instancia en dos entradas (redes siamesas).
-  - Threads/concurrencia sobre la misma capa.
-  - Gradient check determinista.
+Activations NO LONGER store state in the instance. The `forward` method
+returns `(output, cache)` and `backward(d_output, cache)` uses that
+explicit cache. This allows:
+  - Reusing the same instance on two inputs (siamese networks).
+  - Threads/concurrency on the same layer.
+  - Deterministic gradient checking.
 
-Softmax ahora implementa el Jacobiano-vector completo, por lo que es
-matemáticamente correcto con CUALQUIER función de pérdida. El atajo
-(pred - y) sigue disponible vía `from_logits=True` en las losses.
+Softmax now implements the full Jacobian-vector product, making it
+mathematically correct with ANY loss function. The shortcut
+(pred - y) is still available via `from_logits=True` in the losses.
 
-Activaciones: Sigmoid, ReLU, LeakyReLU, ELU, Tanh, Softmax, Linear.
+Activations: Sigmoid, ReLU, LeakyReLU, ELU, Tanh, Softmax, Linear.
 """
 from typing import Any, Dict, Tuple
 
@@ -22,7 +22,7 @@ Cache = Dict[str, Any]
 
 
 class Activation:
-    """Base class stateless."""
+    """Stateless base class."""
 
     def forward(self, x: np.ndarray) -> Tuple[np.ndarray, Cache]:
         raise NotImplementedError
@@ -31,7 +31,7 @@ class Activation:
         raise NotImplementedError
 
     def get_config(self) -> Dict[str, Any]:
-        """Config serializable a JSON. Reconstruible con from_config()."""
+        """JSON-serializable config. Reconstructible with from_config()."""
         return {"class_name": type(self).__name__, "config": {}}
 
     @classmethod
@@ -107,9 +107,9 @@ class Tanh(Activation):
 
 class Softmax(Activation):
     """
-    Softmax con Jacobiano-vector completo. Matemáticamente correcto con
-    cualquier pérdida. Para la combinación Softmax + CategoricalCrossEntropy,
-    usa `from_logits=True` en la loss para el atajo numéricamente estable.
+    Softmax with full Jacobian-vector product. Mathematically correct with
+    any loss. For the Softmax + CategoricalCrossEntropy combination,
+    use `from_logits=True` in the loss for a numerically stable shortcut.
     """
 
     def forward(self, x):
@@ -159,13 +159,13 @@ def get_activation(activation) -> Activation:
         key = activation.lower()
         if key not in _ACTIVATIONS:
             raise ValueError(
-                f"Activación desconocida: {activation}. "
-                f"Opciones: {list(_ACTIVATIONS.keys())}"
+                f"Unknown activation: {activation}. "
+                f"Options: {list(_ACTIVATIONS.keys())}"
             )
         return _ACTIVATIONS[key]()
     if isinstance(activation, dict):
         name = activation["class_name"]
         if name not in _ACTIVATION_CLASSES:
-            raise ValueError(f"Activación desconocida en config: {name}")
+            raise ValueError(f"Unknown activation in config: {name}")
         return _ACTIVATION_CLASSES[name].from_config(activation.get("config", {}))
-    raise TypeError(f"Tipo no soportado: {type(activation)}")
+    raise TypeError(f"Unsupported type: {type(activation)}")

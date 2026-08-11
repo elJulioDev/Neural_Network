@@ -1,49 +1,49 @@
-# NeuralNetwork — Librería de Deep Learning Vectorizada
+# NeuralNetwork — Vectorized Deep Learning Library
 
-Librería de Deep Learning ligera, modular y **completamente vectorizada** en Python y NumPy. Pensada para producción: API estilo Keras, gradientes verificados numéricamente, persistencia portable sin pickle, caches externos para arquitecturas avanzadas.
+Lightweight, modular, and **fully vectorized** Deep Learning library in Python and NumPy. Designed for production: Keras-style API, numerically verified gradients, portable persistence without pickle, external caches for advanced architectures.
 
-> **v1.0.0 — lanzamiento estable.** Paquete renombrado a `nnlib`, empaquetado moderno con `pyproject.toml`, CI con linting, LICENSE MIT. Ver [CHANGELOG.md](CHANGELOG.md) para historial completo.
+> **v1.0.0 — stable release.** Package renamed to `nnlib`, modern packaging with `pyproject.toml`, CI with linting, MIT LICENSE. See [CHANGELOG.md](CHANGELOG.md) for full history.
 
-## Principios de Diseño
+## Design Principles
 
-1. **Sin acoplamiento matemático oculto.** Softmax implementa el Jacobiano completo; CCE/BCE aceptan `from_logits=True` para el atajo estable. Nada "asume en silencio" quién está antes.
-2. **Capas puras respecto al estado entrenable.** `forward(x) -> (output, cache)`, `backward(d_output, cache) -> (d_input, grads)`. Una misma capa procesa N entradas en paralelo (siamesas, triplet loss) sin corromperse.
-3. **Interfaz genérica entre capas y optimizadores.** Las capas declaran `parameters() -> Dict[str, ndarray]` con cualquier nombre/cantidad. El optimizer no conoce `weights`/`biases` hardcodeados.
-4. **Fail-fast en shapes.** `build()` propaga dimensiones por toda la red en `compile()`, no en el primer `fit()`.
-5. **Persistencia portable.** `save(dir)` produce `topology.json` (sin pickle, legible, inspeccionable) + `weights.npz` (estándar NumPy). Sobrevive refactors.
+1. **No hidden mathematical coupling.** Softmax implements the full Jacobian; CCE/BCE accept `from_logits=True` for the stable shortcut. Nothing "silently assumes" who is before it.
+2. **Layers are pure w.r.t. trainable state.** `forward(x) -> (output, cache)`, `backward(d_output, cache) -> (d_input, grads)`. The same layer processes N inputs in parallel (siamese, triplet loss) without corruption.
+3. **Generic interface between layers and optimizers.** Layers declare `parameters() -> Dict[str, ndarray]` with any name/quantity. The optimizer doesn't know about hardcoded `weights`/`biases`.
+4. **Fail-fast on shapes.** `build()` propagates dimensions through the entire network at `compile()` time, not on the first `fit()`.
+5. **Portable persistence.** `save(dir)` produces `topology.json` (no pickle, readable, inspectable) + `weights.npz` (standard NumPy). Survives refactors.
 
-## Características
+## Features
 
-### Capas
+### Layers
 `Dense` (alias `Layer`), `Dropout`, `BatchNormalization`.
 
-### Activaciones
-`Sigmoid`, `ReLU`, `LeakyReLU`, `ELU`, `Tanh`, `Softmax` (Jacobiano completo), `Linear`.
+### Activations
+`Sigmoid`, `ReLU`, `LeakyReLU`, `ELU`, `Tanh`, `Softmax` (full Jacobian), `Linear`.
 
-### Optimizadores
-`SGD` (con momentum y Nesterov), `AdaGrad`, `RMSprop`, `Adam`. Todos con `clip_norm` y `clip_value`.
+### Optimizers
+`SGD` (with momentum and Nesterov), `AdaGrad`, `RMSprop`, `Adam`. All with `clip_norm` and `clip_value`.
 
-### Pérdidas
-`MSE`, `MAE`, `Huber`, `BinaryCrossEntropy`, `CategoricalCrossEntropy`, `SparseCategoricalCrossEntropy`. Las cross-entropies aceptan `from_logits`.
+### Losses
+`MSE`, `MAE`, `Huber`, `BinaryCrossEntropy`, `CategoricalCrossEntropy`, `SparseCategoricalCrossEntropy`. Cross-entropies accept `from_logits`.
 
-### Inicializadores
+### Initializers
 `HeNormal`, `XavierNormal`, `XavierUniform`, `Zeros`, `Ones`.
 
-### Regularizadores
-`L1`, `L2`, `L1L2` aplicables a los kernels.
+### Regularizers
+`L1`, `L2`, `L1L2` applicable to kernels.
 
-### Métricas
+### Metrics
 `BinaryAccuracy`, `CategoricalAccuracy`, `SparseCategoricalAccuracy`, `MeanAbsoluteError`, `RootMeanSquaredError`, `R2Score`.
 
 ### Callbacks
 `EarlyStopping`, `ModelCheckpoint`, `ReduceLROnPlateau`, `History`.
 
-### Calidad
-* **68 tests** cubriendo capas, optimizadores, losses, métricas, callbacks, persistencia, state isolation e integración.
-* **Gradient check numérico** que valida backprop incluido el path Softmax+CCE con Jacobiano real.
-* Demo de red siamesa que verifica state isolation con pesos compartidos.
+### Quality
+* **68 tests** covering layers, optimizers, losses, metrics, callbacks, persistence, state isolation, and integration.
+* **Numerical gradient check** validating backprop including the Softmax+CCE path with real Jacobian.
+* Siamese network demo verifying state isolation with shared weights.
 
-## Instalación
+## Installation
 
 ```bash
 git clone https://github.com/elJulioDev/Neural_Network.git
@@ -53,13 +53,13 @@ source venv/bin/activate      # Windows: venv\Scripts\activate
 pip install -e .
 ```
 
-Para desarrollo (incluye ruff y matplotlib):
+For development (includes ruff and matplotlib):
 
 ```bash
 pip install -e ".[dev]"
 ```
 
-## Uso Rápido (API moderna estilo Keras)
+## Quick Start (Keras-style API)
 
 ```python
 import numpy as np
@@ -77,7 +77,7 @@ model.add(Dense(1, activation='linear'))                    # logits
 
 model.compile(
     optimizer=Adam(learning_rate=0.05),
-    loss=BinaryCrossEntropy(from_logits=True),              # path estable
+    loss=BinaryCrossEntropy(from_logits=True),              # stable path
 )
 
 model.fit(X, y, epochs=500, batch_size=4,
@@ -88,61 +88,61 @@ logits = model.predict(X)
 probs = 1.0 / (1.0 + np.exp(-logits))
 ```
 
-## `from_logits` — por qué importa
+## `from_logits` — why it matters
 
-* **`from_logits=True`** (recomendado): capa final `Linear`, la loss aplica softmax/sigmoid internamente y usa el atajo estable `(pred - y) / N`.
-* **`from_logits=False`**: la capa anterior puede ser cualquier activación. Softmax propaga su Jacobiano real completo — matemáticamente correcto con cualquier loss.
+* **`from_logits=True`** (recommended): final layer `Linear`, the loss applies softmax/sigmoid internally and uses the stable shortcut `(pred - y) / N`.
+* **`from_logits=False`**: the previous layer can be any activation. Softmax propagates its full real Jacobian — mathematically correct with any loss.
 
-Patrón recomendado para producción:
+Recommended production pattern:
 
 ```python
-# Clasificación binaria
+# Binary classification
 model.add(Dense(1, activation='linear'))
 model.compile(loss=BinaryCrossEntropy(from_logits=True), ...)
-# Al inferir:
+# At inference:
 logits = model.predict(X)
 probs  = 1 / (1 + np.exp(-logits))
 
-# Clasificación multiclase
+# Multiclass classification
 model.add(Dense(n_classes, activation='linear'))
 model.compile(loss=CategoricalCrossEntropy(from_logits=True), ...)
-# Al inferir:
+# At inference:
 logits = model.predict(X)
 ex = np.exp(logits - logits.max(axis=1, keepdims=True))
 probs = ex / ex.sum(axis=1, keepdims=True)
 ```
 
-## Persistencia Portable
+## Portable Persistence
 
 ```python
 model.save('my_model/')
-# Produce:
-#   my_model/topology.json   ← arquitectura + optimizer + loss (legible)
-#   my_model/weights.npz     ← parámetros + estado BatchNorm
+# Produces:
+#   my_model/topology.json   <- architecture + optimizer + loss (readable)
+#   my_model/weights.npz     <- parameters + BatchNorm state
 
 loaded = NeuralNetwork.load('my_model/')
 ```
 
-`topology.json` es inspeccionable, no ejecutable, y sobrevive a refactorizaciones internas.
+`topology.json` is inspectable, not executable, and survives internal refactors.
 
-## Redes con capas compartidas (ej. siamesas)
+## Shared-weight networks (e.g. siamese)
 
-Una misma instancia de capa puede procesar dos inputs distintos sin corromperse. Ver `examples/siamese_network.py`.
+The same layer instance can process two different inputs without corruption. See `examples/siamese_network.py`.
 
 ```python
 from nnlib.layer import Dense
 layer = Dense(4, 3, activation='relu')
 
 out1, cache1 = layer.forward(x1)
-out2, cache2 = layer.forward(x2)              # NO pisotea cache1
+out2, cache2 = layer.forward(x2)              # does NOT overwrite cache1
 
-d_in1, grads1 = layer.backward(dL1, cache1)   # usa cache1 — correcto
-d_in2, grads2 = layer.backward(dL2, cache2)   # usa cache2 — correcto
+d_in1, grads1 = layer.backward(dL1, cache1)   # uses cache1 — correct
+d_in2, grads2 = layer.backward(dL2, cache2)   # uses cache2 — correct
 ```
 
-## Fail-Fast en Shapes
+## Fail-Fast on Shapes
 
-Los mismatches dimensionales se detectan al construir/compilar, no al entrenar:
+Dimensional mismatches are detected at build/compile time, not during training:
 
 ```python
 model = NeuralNetwork()
@@ -150,11 +150,11 @@ model.add(Dense(4, input_size=3, activation='relu'))
 model.add(Dense(2, activation='softmax'))
 model.compile(optimizer='adam', loss='cce')
 
-# X con 10 features en vez de 3 → ValueError inmediato
+# X has 10 features instead of 3 -> immediate ValueError
 model.fit(np.random.randn(5, 10), ...)
 ```
 
-## Ejemplo Producción con BatchNorm + Dropout + Callbacks
+## Production Example with BatchNorm + Dropout + Callbacks
 
 ```python
 from nnlib import (
@@ -185,7 +185,7 @@ model.fit(X_train, y_train, epochs=100, batch_size=32,
 model.save('production_model/')
 ```
 
-## Integración en Django/Flask
+## Django/Flask Integration
 
 ```python
 from nnlib import NeuralNetwork
@@ -201,47 +201,47 @@ def predict_view(request):
     return JsonResponse({'probabilities': probs[0].tolist()})
 ```
 
-## Estructura del Proyecto
+## Project Structure
 
 ```text
 Neural_Network/
-├── nnlib/                        # Paquete principal
-│   ├── __init__.py               # API pública re-exportada
+├── nnlib/                        # Main package
+│   ├── __init__.py               # Public API re-exports
 │   ├── activations.py            # Stateless: forward -> (out, cache)
 │   ├── callbacks.py
-│   ├── initializers.py           # Con get_config para JSON
+│   ├── initializers.py           # With get_config for JSON
 │   ├── layer.py                  # Dense, Dropout, BatchNorm; parameters() dict
-│   ├── losses.py                 # from_logits en CCE/BCE
+│   ├── losses.py                 # from_logits in CCE/BCE
 │   ├── metrics.py
-│   ├── neural_network.py         # Gestión externa de caches, build(), save/load
-│   ├── optimizers.py             # Interfaz genérica (layer_id, name, param, grad)
+│   ├── neural_network.py         # External cache management, build(), save/load
+│   ├── optimizers.py             # Generic interface (layer_id, name, param, grad)
 │   ├── regularizers.py
 │   └── utils.py
 ├── tests/                        # 68 tests
-│   ├── test_activations.py       # Stateless, Softmax Jacobiano, roundtrip config
-│   ├── test_gradient_check.py    # Valida backprop numéricamente
+│   ├── test_activations.py       # Stateless, Softmax Jacobian, config roundtrip
+│   ├── test_gradient_check.py    # Numerical backprop validation
 │   ├── test_layer.py             # Including state isolation test
 │   ├── test_losses.py            # Including from_logits path
-│   ├── test_model.py             # Integración + persistencia JSON+NPZ
-│   └── test_optimizers.py        # Interfaz genérica
+│   ├── test_model.py             # Integration + JSON+NPZ persistence
+│   └── test_optimizers.py        # Generic interface
 ├── examples/
 │   ├── multiclass_classification.py
-│   └── siamese_network.py        # Demuestra state isolation
-├── main.py                       # Demo XOR
-├── pyproject.toml                # Empaquetado moderno (PEP 517/518)
+│   └── siamese_network.py        # Demonstrates state isolation
+├── main.py                       # XOR demo
+├── pyproject.toml                # Modern packaging (PEP 517/518)
 ├── requirements.txt              # Dev dependencies
 ├── CHANGELOG.md
 ├── LICENSE                       # MIT
 └── README.md
 ```
 
-## Ejecutar tests
+## Running Tests
 
 ```bash
 python -m unittest discover tests -v
 ```
 
-## Ejemplos
+## Examples
 
 ```bash
 python main.py
@@ -249,5 +249,5 @@ python examples/multiclass_classification.py
 python examples/siamese_network.py
 ```
 
-## Licencia
-Proyecto de uso educativo y personal. Distribuido bajo la licencia MIT.
+## License
+Educational and personal use. Distributed under the MIT license.

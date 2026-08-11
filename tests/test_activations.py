@@ -15,7 +15,7 @@ from nnlib.activations import (
 
 
 class TestActivationsStateless(unittest.TestCase):
-    """Todas las activaciones deben ser stateless: forward no muta self."""
+    """All activations must be stateless: forward does not mutate self."""
 
     def test_all_return_cache(self):
         x = np.random.randn(4, 3)
@@ -26,8 +26,8 @@ class TestActivationsStateless(unittest.TestCase):
             self.assertIsInstance(cache, dict)
 
     def test_reuse_same_instance_different_inputs(self):
-        """Redes siamesas: misma instancia, dos inputs, ambos backward
-        deben dar resultados coherentes independientes."""
+        """Siamese networks: same instance, two inputs, both backward
+        must produce consistent independent results."""
         act = Sigmoid()
         x1 = np.random.randn(3, 4)
         x2 = np.random.randn(3, 4)
@@ -35,25 +35,25 @@ class TestActivationsStateless(unittest.TestCase):
         out2, cache2 = act.forward(x2)
         d1 = act.backward(np.ones_like(out1), cache1)
         act.backward(np.ones_like(out2), cache2)
-        # El backward de x1 debe usar el cache de x1, no el de x2
+        # Backward of x1 must use the cache of x1, not that of x2
         expected_d1 = out1 * (1 - out1)
         np.testing.assert_allclose(d1, expected_d1, atol=1e-10)
 
     def test_softmax_full_jacobian(self):
-        """Softmax.backward debe implementar el Jacobiano completo
-        (no el truco de retornar 1 asumiendo CCE)."""
+        """Softmax.backward must implement the full Jacobian
+        (not the trick of returning 1 assuming CCE)."""
         sm = Softmax()
         x = np.array([[1.0, 2.0, 3.0], [0.1, 0.2, 0.7]])
         out, cache = sm.forward(x)
 
-        # Verificación numérica: cada fila debe sumar 1
+        # Numerical verification: each row must sum to 1
         np.testing.assert_allclose(out.sum(axis=1), [1.0, 1.0])
 
-        # Verificación del Jacobiano: gradient check numérico
+        # Jacobian verification: numerical gradient check
         d_output = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
         analytic = sm.backward(d_output, cache)
 
-        # Numérico
+        # Numerical
         eps = 1e-6
         numeric = np.zeros_like(x)
         for i in range(x.shape[0]):

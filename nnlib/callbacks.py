@@ -1,11 +1,11 @@
 """
-Sistema de callbacks estilo Keras.
+Keras-style callback system.
 
-Permiten engancharse al ciclo de entrenamiento sin modificar el código
-de la red. Útil para: early stopping, checkpoints, ajuste de lr, logs
-personalizados, integraciones externas (TensorBoard, MLflow, etc).
+Allows hooking into the training cycle without modifying the network
+code. Useful for: early stopping, checkpoints, lr adjustment, custom
+logs, external integrations (TensorBoard, MLflow, etc).
 
-Hooks disponibles:
+Available hooks:
 - on_train_begin / on_train_end
 - on_epoch_begin / on_epoch_end
 - on_batch_begin / on_batch_end
@@ -16,7 +16,7 @@ import numpy as np
 
 
 class Callback:
-    """Hereda de aquí y sobreescribe los hooks que necesites."""
+    """Inherit from here and override the hooks you need."""
 
     def __init__(self):
         self.model = None
@@ -34,8 +34,8 @@ class Callback:
 
 class History(Callback):
     """
-    Registra todas las métricas de cada epoch en un dict de listas.
-    Se añade automáticamente al fit() y se devuelve al finalizar.
+    Records all metrics of each epoch in a dict of lists.
+    Automatically added to fit() and returned at the end.
     """
 
     def __init__(self):
@@ -53,14 +53,14 @@ class History(Callback):
 
 class EarlyStopping(Callback):
     """
-    Detiene el entrenamiento si una métrica deja de mejorar.
+    Stops training if a metric stops improving.
 
     Args:
-        monitor: nombre de la métrica a observar (ej. 'val_loss', 'loss').
-        patience: epochs a esperar sin mejora antes de detener.
-        min_delta: cambio mínimo para considerar mejora.
-        mode: 'min' o 'max'. Auto-detectado si contiene 'loss'.
-        restore_best_weights: si True, restaura los pesos del mejor epoch.
+        monitor: name of the metric to observe (e.g. 'val_loss', 'loss').
+        patience: epochs to wait without improvement before stopping.
+        min_delta: minimum change to consider improvement.
+        mode: 'min' or 'max'. Auto-detected if contains 'loss'.
+        restore_best_weights: if True, restores weights of the best epoch.
     """
 
     def __init__(
@@ -80,7 +80,7 @@ class EarlyStopping(Callback):
         if mode == "auto":
             mode = "max" if "acc" in monitor or "r2" in monitor else "min"
         if mode not in ("min", "max"):
-            raise ValueError("mode debe ser 'min', 'max' o 'auto'.")
+            raise ValueError("mode must be 'min', 'max' or 'auto'.")
         self.mode = mode
 
         self.best = np.inf if mode == "min" else -np.inf
@@ -120,18 +120,18 @@ class EarlyStopping(Callback):
         if self.restore_best_weights and self.best_weights is not None:
             self.model.set_weights(self.best_weights)
         if self.stopped_epoch > 0:
-            print(f"EarlyStopping: detenido en epoch {self.stopped_epoch}")
+            print(f"EarlyStopping: stopped at epoch {self.stopped_epoch}")
 
 
 class ModelCheckpoint(Callback):
     """
-    Guarda los pesos cuando una métrica mejora.
+    Saves weights when a metric improves.
 
     Args:
-        filepath: ruta destino (.npz).
-        monitor: métrica a observar.
-        save_best_only: si True, sólo guarda en mejoras.
-        mode: 'min' o 'max'. Auto-detectado si contiene 'loss'.
+        filepath: destination path (.npz).
+        monitor: metric to observe.
+        save_best_only: if True, only saves on improvements.
+        mode: 'min' or 'max'. Auto-detected if contains 'loss'.
     """
 
     def __init__(
@@ -169,13 +169,13 @@ class ModelCheckpoint(Callback):
 
 class ReduceLROnPlateau(Callback):
     """
-    Reduce el learning rate cuando una métrica se estanca.
+    Reduces the learning rate when a metric plateaus.
 
     Args:
-        monitor: métrica a observar.
-        factor: multiplicador del lr (ej. 0.5 lo reduce a la mitad).
-        patience: epochs sin mejora antes de reducir.
-        min_lr: límite inferior.
+        monitor: metric to observe.
+        factor: learning rate multiplier (e.g. 0.5 halves it).
+        patience: epochs without improvement before reducing.
+        min_lr: lower limit.
     """
 
     def __init__(
@@ -188,7 +188,7 @@ class ReduceLROnPlateau(Callback):
     ):
         super().__init__()
         if not 0.0 < factor < 1.0:
-            raise ValueError("factor debe estar en (0, 1).")
+            raise ValueError("factor must be in (0, 1).")
         self.monitor = monitor
         self.factor = factor
         self.patience = patience

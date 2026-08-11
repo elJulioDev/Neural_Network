@@ -38,8 +38,8 @@ class TestXORIntegration(unittest.TestCase):
         self.assertIn("loss", history)
 
     def test_xor_with_logits_path(self):
-        """Capa final 'linear' + BCE from_logits. El gradiente debe fluir
-        correctamente por el camino estable."""
+        """Final layer 'linear' + BCE from_logits. The gradient must flow
+        correctly through the stable path."""
         np.random.seed(42)
         X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]], dtype=float)
         y = np.array([[0], [1], [1], [0]], dtype=float)
@@ -53,7 +53,7 @@ class TestXORIntegration(unittest.TestCase):
         )
         model.fit(X, y, epochs=500, batch_size=4, verbose=0)
 
-        # Para obtener probabilidades aplicamos sigmoid al output
+        # To get probabilities we apply sigmoid to the output
         logits = model.predict(X)
         probs = 1.0 / (1.0 + np.exp(-logits))
         for i in range(4):
@@ -61,7 +61,7 @@ class TestXORIntegration(unittest.TestCase):
 
 
 class TestStateIsolation(unittest.TestCase):
-    """Caches externos — una capa procesando dos inputs no se pisotea."""
+    """External caches — a layer processing two inputs does not get corrupted."""
 
     def test_layer_reused_across_inputs(self):
         from nnlib.layer import Dense
@@ -72,9 +72,9 @@ class TestStateIsolation(unittest.TestCase):
 
         # Forward pass 1
         out1, cache1 = layer.forward(x1)
-        # Forward pass 2 INTERCALADO (antes del backward de 1)
+        # Forward pass 2 INTERLEAVED (before backward of 1)
         out2, cache2 = layer.forward(x2)
-        # Backward 1 debe usar cache1 (no cache2)
+        # Backward 1 must use cache1 (not cache2)
         d_in1, g1 = layer.backward(np.ones_like(out1), cache1)
         d_in2, g2 = layer.backward(np.ones_like(out2), cache2)
 
@@ -94,7 +94,7 @@ class TestPersistenceJSON(unittest.TestCase):
         model.add(Dense(3, activation="softmax"))
         model.compile(optimizer=Adam(learning_rate=0.001), loss="cce", metrics=["categorical_accuracy"])
 
-        # Warm up running stats con un forward
+        # Warm up running stats with a forward pass
         X = np.random.randn(20, 4)
         _ = model.predict(X)
 
@@ -102,17 +102,17 @@ class TestPersistenceJSON(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             model.save(tmpdir)
-            # Verifica archivos
+            # Verify files
             self.assertTrue(os.path.exists(os.path.join(tmpdir, "topology.json")))
             self.assertTrue(os.path.exists(os.path.join(tmpdir, "weights.npz")))
 
-            # Carga en modelo nuevo
+            # Load into new model
             loaded = NeuralNetwork.load(tmpdir)
             after = loaded.predict(X)
             np.testing.assert_allclose(before, after, atol=1e-10)
 
     def test_json_only_roundtrip_no_pickle(self):
-        """Topology JSON puro: debe reconstruir arquitectura sin pickle."""
+        """Pure JSON topology: must reconstruct architecture without pickle."""
         model = NeuralNetwork()
         model.add(Dense(16, input_size=5, activation="relu"))
         model.add(Dense(3, activation="softmax"))
@@ -127,14 +127,14 @@ class TestPersistenceJSON(unittest.TestCase):
         self.assertTrue(restored._compiled)
 
     def test_batchnorm_running_stats_persisted(self):
-        """Las running stats (no entrenables) deben persistir en save/load."""
+        """The running stats (non-trainable) must persist across save/load."""
         np.random.seed(0)
         model = NeuralNetwork()
         model.add(Dense(4, input_size=3, activation="linear"))
         model.add(BatchNormalization(4))
         model.compile(optimizer="adam", loss="mse")
 
-        # Entrenar un poco para cambiar running stats
+        # Train a bit to change running stats
         model.fit(np.random.randn(50, 3), np.random.randn(50, 4), epochs=3, verbose=0)
         rm_before = model.layers[1].running_mean.copy()
 
@@ -146,7 +146,7 @@ class TestPersistenceJSON(unittest.TestCase):
 
 
 class TestShapePropagation(unittest.TestCase):
-    """Fail-fast en shapes incompatibles."""
+    """Fail-fast on incompatible shapes."""
 
     def test_mismatched_input_size_fails_on_build(self):
         model = NeuralNetwork()
@@ -154,7 +154,7 @@ class TestShapePropagation(unittest.TestCase):
         model.add(Dense(2, activation="softmax"))
         model.compile(optimizer="adam", loss="cce")
 
-        # X tiene 10 features pero el modelo espera 3
+        # X has 10 features but the model expects 3
         with self.assertRaises(ValueError):
             model.fit(np.random.randn(5, 10), np.random.randn(5, 2), epochs=1, verbose=0)
 
@@ -163,7 +163,7 @@ class TestShapePropagation(unittest.TestCase):
         model.add(Dense(16, input_size=4, activation="relu"))
         model.add(Dense(8, activation="relu"))
         model.add(Dense(3, activation="softmax"))
-        # Shapes ya deben estar propagadas sin llamar compile()
+        # Shapes should already be propagated without calling compile()
         self.assertEqual(model.layers[0].output_shape, (None, 16))
         self.assertEqual(model.layers[1].output_shape, (None, 8))
         self.assertEqual(model.layers[2].output_shape, (None, 3))
@@ -201,7 +201,7 @@ class TestCallbacks(unittest.TestCase):
         model.compile(optimizer=SGD(learning_rate=0.001), loss="mse")
         es = EarlyStopping(monitor="loss", patience=3, restore_best_weights=True)
         model.fit(X, y, epochs=100, batch_size=10, callbacks=[es], verbose=0)
-        # Algo pasó antes de epoch 100
+        # Something happened before epoch 100
         self.assertTrue(es.stopped_epoch >= 0 or not model.stop_training)
 
 

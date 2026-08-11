@@ -1,11 +1,11 @@
 """
-Demo XOR — v1.0.
+XOR demo — v1.0.
 
-Muestra el camino recomendado de producción:
-- capa final 'linear' + BinaryCrossEntropy(from_logits=True).
-  Es numéricamente estable y evita el acoplamiento Softmax/Loss.
-- build() propaga shapes antes de entrenar (fail-fast).
-- save() genera topology.json + weights.npz sin pickle.
+Shows the recommended production path:
+- final 'linear' layer + BinaryCrossEntropy(from_logits=True).
+  It is numerically stable and avoids Softmax/Loss coupling.
+- build() propagates shapes before training (fail-fast).
+- save() generates topology.json + weights.npz without pickle.
 """
 import os
 import tempfile
@@ -44,19 +44,19 @@ def main():
         verbose=0,
     )
 
-    # Inferencia: aplicar sigmoid al logit
+    # Inference: apply sigmoid to the logit
     logits = model.predict(X)
     probs = 1.0 / (1.0 + np.exp(-logits))
 
-    print("\n--- Predicciones ---")
+    print("\n--- Predictions ---")
     for i in range(len(X)):
         print(
-            f"Input: {X[i]}, Esperado: {int(y[i, 0])}, "
+            f"Input: {X[i]}, Expected: {int(y[i, 0])}, "
             f"Prob: {float(probs[i, 0]):.4f}, "
-            f"Clase: {int(probs[i, 0] >= 0.5)}"
+            f"Class: {int(probs[i, 0] >= 0.5)}"
         )
 
-    # Persistencia portable (JSON + NPZ)
+    # Portable persistence (JSON + NPZ)
     with tempfile.TemporaryDirectory() as tmp:
         path = os.path.join(tmp, "xor_model")
         model.save(path)

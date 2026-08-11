@@ -1,18 +1,18 @@
 """
-Optimizadores v0.4 — API genérica independiente del tipo de parámetro.
+Optimizers v0.4 — generic API independent of parameter type.
 
-Elimina las fugas de abstracción de v0.3: los optimizadores ya no
-inspeccionan atributos hardcodeados (`weights`, `biases`, etc). Reciben
-tuplas `(layer_id, param_name, param_array, grad_array)` y aplican la
-regla de actualización in-place.
+Eliminates the abstraction leaks of v0.3: optimizers no longer inspect
+hardcoded attributes (`weights`, `biases`, etc). They receive tuples
+`(layer_id, param_name, param_array, grad_array)` and apply the update
+rule in-place.
 
-Esto permite capas con cualquier número y nombre de parámetros sin
-tocar el código del optimizer:
+This allows layers with any number and name of parameters without
+touching the optimizer code:
   - Dense: {'weights', 'biases'}
   - BatchNormalization: {'gamma', 'beta'}
-  - CualquierCapaFutura: {'query', 'key', 'value', 'out_proj', ...}
+  - AnyFutureLayer: {'query', 'key', 'value', 'out_proj', ...}
 
-Todos soportan gradient clipping (clip_norm, clip_value).
+All support gradient clipping (clip_norm, clip_value).
 """
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -21,11 +21,10 @@ import numpy as np
 
 class Optimizer:
     """
-    Base.
+    Base class.
 
-    Subclases implementan `_update(layer_id, name, param, grad)`, que
-    debe modificar `param` IN-PLACE (usando `param += delta` o
-    equivalente).
+    Subclasses implement `_update(layer_id, name, param, grad)`, which
+    must modify `param` IN-PLACE (using `param += delta` or equivalent).
     """
 
     def __init__(
@@ -53,13 +52,13 @@ class Optimizer:
         grads_and_params: List[Tuple[int, str, np.ndarray, np.ndarray]],
     ) -> None:
         """
-        Aplica gradientes a sus parámetros.
+        Apply gradients to parameters.
 
         Args:
-            grads_and_params: lista de tuplas
+            grads_and_params: list of tuples
                 (layer_id, param_name, param_array, grad_array).
-                `param_array` debe ser la referencia al array real de
-                la capa para que la actualización in-place sea efectiva.
+                `param_array` must be the reference to the actual array
+                of the layer for the in-place update to be effective.
         """
         self.iterations += 1
         for layer_id, name, param, grad in grads_and_params:
@@ -212,9 +211,9 @@ def get_optimizer(opt) -> Optimizer:
     if isinstance(opt, str):
         key = opt.lower()
         if key not in _OPTIMIZERS:
-            raise ValueError(f"Optimizer desconocido: {opt}. Opciones: {list(_OPTIMIZERS.keys())}")
+            raise ValueError(f"Unknown optimizer: {opt}. Options: {list(_OPTIMIZERS.keys())}")
         return _OPTIMIZERS[key]()
     if isinstance(opt, dict):
         cls = _OPT_CLASSES[opt["class_name"]]
         return cls.from_config(opt.get("config", {}))
-    raise TypeError(f"Tipo no soportado: {type(opt)}")
+    raise TypeError(f"Unsupported type: {type(opt)}")
