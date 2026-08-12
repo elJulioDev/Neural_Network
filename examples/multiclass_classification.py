@@ -8,13 +8,22 @@ Multiclass demo with BatchNorm, Dropout, callbacks and from_logits.
 """
 import os
 import tempfile
+
 import numpy as np
 
 from nnlib import (
-    NeuralNetwork, Dense, Dropout, BatchNormalization,
-    Adam, L2, CategoricalCrossEntropy,
-    EarlyStopping, ReduceLROnPlateau,
-    train_test_split, to_categorical, standardize,
+    L2,
+    Adam,
+    BatchNormalization,
+    CategoricalCrossEntropy,
+    Dense,
+    Dropout,
+    EarlyStopping,
+    NeuralNetwork,
+    ReduceLROnPlateau,
+    standardize,
+    to_categorical,
+    train_test_split,
 )
 
 

@@ -15,8 +15,8 @@ two inputs, and a simple contrastive loss compares their embeddings.
 """
 import numpy as np
 
-from nnlib.layer import Dense, Dropout
 from nnlib.activations import ReLU, Tanh
+from nnlib.layer import Dense
 
 
 class SiameseEncoder:
@@ -68,7 +68,8 @@ def main():
         for _ in range(n):
             i, j = np.random.choice(len(X), 2, replace=False)
             same_cluster = (i < n // 2) == (j < n // 2)
-            pairs_a.append(X[i]); pairs_b.append(X[j])
+            pairs_a.append(X[i])
+            pairs_b.append(X[j])
             labels.append([1.0 if same_cluster else 0.0])
         return np.array(pairs_a), np.array(pairs_b), np.array(labels)
 

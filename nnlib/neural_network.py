@@ -490,20 +490,55 @@ class NeuralNetwork:
 
     def save(self, directory: str) -> None:
         """
-        Saves in portable format: `topology.json` + `weights.npz`.
+        Saves in portable format: `topology.json` + `weights.npz` + `optimizer_state.npz`.
         No pickle: survives refactors and is safe to share.
         """
         os.makedirs(directory, exist_ok=True)
         with open(os.path.join(directory, "topology.json"), "w", encoding="utf-8") as f:
             f.write(self.to_json())
         self.save_weights(os.path.join(directory, "weights.npz"))
+        if self.optimizer is not None:
+            self._save_optimizer_state(os.path.join(directory, "optimizer_state.npz"))
+
+    def _save_optimizer_state(self, filepath: str) -> None:
+        """Serializes optimizer state to NPZ."""
+        state = self.optimizer.get_state()
+        flat: Dict[str, np.ndarray] = {}
+        for k, v in state.items():
+            if isinstance(v, np.ndarray):
+                flat[k] = v
+            elif isinstance(v, dict):
+                for sub_k, sub_v in v.items():
+                    flat[f"{k}/{sub_k}"] = sub_v
+            else:
+                flat[k] = np.array(v)
+        np.savez(filepath, **flat)
+
+    def _load_optimizer_state(self, filepath: str) -> None:
+        """Restores optimizer state from NPZ."""
+        if self.optimizer is None or not os.path.exists(filepath):
+            return
+        data = np.load(filepath)
+        state: Dict[str, Any] = {}
+        for k in data.files:
+            if "/" in k:
+                prefix, sub_k = k.split("/", 1)
+                if prefix not in state:
+                    state[prefix] = {}
+                state[prefix][sub_k] = data[k]
+            elif k == "iterations":
+                state[k] = int(data[k])
+            else:
+                state[k] = data[k]
+        self.optimizer.set_state(state)
 
     @classmethod
     def load(cls, directory: str) -> "NeuralNetwork":
-        """Loads a model from topology.json + weights.npz."""
+        """Loads a model from topology.json + weights.npz + optimizer_state.npz."""
         with open(os.path.join(directory, "topology.json"), "r", encoding="utf-8") as f:
             model = cls.from_json(f.read())
         model.load_weights(os.path.join(directory, "weights.npz"))
+        model._load_optimizer_state(os.path.join(directory, "optimizer_state.npz"))
         return model
 
     # Alias for backward compatibility

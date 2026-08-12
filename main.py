@@ -9,12 +9,15 @@ Shows the recommended production path:
 """
 import os
 import tempfile
+
 import numpy as np
 
 from nnlib import (
-    NeuralNetwork, Dense,
-    Adam, BinaryCrossEntropy,
+    Adam,
+    BinaryCrossEntropy,
+    Dense,
     EarlyStopping,
+    NeuralNetwork,
 )
 
 

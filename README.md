@@ -1,5 +1,9 @@
 # NeuralNetwork — Vectorized Deep Learning Library
 
+[![CI](https://github.com/elJulioDev/Neural_Network/actions/workflows/python-app.yml/badge.svg)](https://github.com/elJulioDev/Neural_Network/actions/workflows/python-app.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+
 Lightweight, modular, and **fully vectorized** Deep Learning library in Python and NumPy. Designed for production: Keras-style API, numerically verified gradients, portable persistence without pickle, external caches for advanced architectures.
 
 > **v1.0.0 — stable release.** Package renamed to `nnlib`, modern packaging with `pyproject.toml`, CI with linting, MIT LICENSE. See [CHANGELOG.md](CHANGELOG.md) for full history.
@@ -249,5 +253,13 @@ python examples/multiclass_classification.py
 python examples/siamese_network.py
 ```
 
+## Limitations
+
+* No convolutional or recurrent layers (Conv1D/2D, LSTM, GRU, etc.) — contributions welcome.
+* No GPU acceleration — pure NumPy, CPU only.
+* Full dataset must fit in memory — no streaming or lazy loading for large datasets.
+* No built-in model export to ONNX or other formats.
+
 ## License
-Educational and personal use. Distributed under the MIT license.
+
+MIT License. See [LICENSE](LICENSE) for details.

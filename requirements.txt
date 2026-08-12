@@ -1,4 +1,4 @@
-# Runtime dependency (numpy)
-# Install the package with: pip install -e .
-# This reads pyproject.toml and installs numpy automatically.
-# Dev dependencies (ruff, matplotlib): pip install -e ".[dev]"
+# Runtime dependencies — installs the package (reads numpy from pyproject.toml)
+-e .
+
+# Dev dependencies: pip install -e ".[dev]"

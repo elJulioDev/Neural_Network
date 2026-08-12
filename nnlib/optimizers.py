@@ -78,6 +78,14 @@ class Optimizer:
             },
         }
 
+    def get_state(self) -> Dict[str, Any]:
+        """Returns mutable optimizer state for persistence."""
+        return {"iterations": self.iterations}
+
+    def set_state(self, state: Dict[str, Any]) -> None:
+        """Restores mutable optimizer state."""
+        self.iterations = state.get("iterations", 0)
+
     @classmethod
     def from_config(cls, config: Dict[str, Any]) -> "Optimizer":
         """Reconstructs an optimizer from a config dict."""
@@ -113,6 +121,20 @@ class SGD(Optimizer):
             update = v_new
         param += update  # in-place
 
+    def get_state(self) -> Dict[str, Any]:
+        """Returns SGD mutable state."""
+        state = super().get_state()
+        state["_velocity"] = {f"{k[0]}_{k[1]}": v for k, v in self._velocity.items()}
+        return state
+
+    def set_state(self, state: Dict[str, Any]) -> None:
+        """Restores SGD mutable state."""
+        super().set_state(state)
+        self._velocity = {
+            tuple(k.split("_", 1)): v
+            for k, v in state.get("_velocity", {}).items()
+        }
+
     def get_config(self) -> Dict[str, Any]:
         """Returns SGD config."""
         cfg = super().get_config()
@@ -133,6 +155,20 @@ class AdaGrad(Optimizer):
             self._cache[key] = np.zeros_like(grad)
         self._cache[key] += grad ** 2
         param -= self.lr * grad / (np.sqrt(self._cache[key]) + self.epsilon)
+
+    def get_state(self) -> Dict[str, Any]:
+        """Returns AdaGrad mutable state."""
+        state = super().get_state()
+        state["_cache"] = {f"{k[0]}_{k[1]}": v for k, v in self._cache.items()}
+        return state
+
+    def set_state(self, state: Dict[str, Any]) -> None:
+        """Restores AdaGrad mutable state."""
+        super().set_state(state)
+        self._cache = {
+            tuple(k.split("_", 1)): v
+            for k, v in state.get("_cache", {}).items()
+        }
 
     def get_config(self) -> Dict[str, Any]:
         """Returns AdaGrad config."""
@@ -162,6 +198,20 @@ class RMSprop(Optimizer):
             self._cache[key] = np.zeros_like(grad)
         self._cache[key] = self.rho * self._cache[key] + (1 - self.rho) * grad ** 2
         param -= self.lr * grad / (np.sqrt(self._cache[key]) + self.epsilon)
+
+    def get_state(self) -> Dict[str, Any]:
+        """Returns RMSprop mutable state."""
+        state = super().get_state()
+        state["_cache"] = {f"{k[0]}_{k[1]}": v for k, v in self._cache.items()}
+        return state
+
+    def set_state(self, state: Dict[str, Any]) -> None:
+        """Restores RMSprop mutable state."""
+        super().set_state(state)
+        self._cache = {
+            tuple(k.split("_", 1)): v
+            for k, v in state.get("_cache", {}).items()
+        }
 
     def get_config(self) -> Dict[str, Any]:
         """Returns RMSprop config."""
@@ -201,6 +251,25 @@ class Adam(Optimizer):
         v_hat = self._v[key] / (1 - self.beta_2 ** self.iterations)
 
         param -= self.lr * m_hat / (np.sqrt(v_hat) + self.epsilon)
+
+    def get_state(self) -> Dict[str, Any]:
+        """Returns Adam mutable state."""
+        state = super().get_state()
+        state["_m"] = {f"{k[0]}_{k[1]}": v for k, v in self._m.items()}
+        state["_v"] = {f"{k[0]}_{k[1]}": v for k, v in self._v.items()}
+        return state
+
+    def set_state(self, state: Dict[str, Any]) -> None:
+        """Restores Adam mutable state."""
+        super().set_state(state)
+        self._m = {
+            tuple(k.split("_", 1)): v
+            for k, v in state.get("_m", {}).items()
+        }
+        self._v = {
+            tuple(k.split("_", 1)): v
+            for k, v in state.get("_v", {}).items()
+        }
 
     def get_config(self) -> Dict[str, Any]:
         """Returns Adam config."""
