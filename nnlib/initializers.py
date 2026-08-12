@@ -1,5 +1,5 @@
 """Initializers with JSON serialization support."""
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Type, Union
 
 import numpy as np
 
@@ -89,7 +89,7 @@ class Ones(Initializer):
         return np.ones(shape)
 
 
-_INITIALIZERS = {
+_INITIALIZERS: Dict[str, Type[Initializer]] = {
     "he_normal": HeNormal,
     "he": HeNormal,
     "xavier_normal": XavierNormal,
@@ -101,7 +101,7 @@ _INITIALIZERS = {
     "ones": Ones,
 }
 
-_INIT_CLASSES = {
+_INIT_CLASSES: Dict[str, Type[Initializer]] = {
     "HeNormal": HeNormal,
     "XavierNormal": XavierNormal,
     "XavierUniform": XavierUniform,

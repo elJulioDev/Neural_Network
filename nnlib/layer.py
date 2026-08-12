@@ -25,7 +25,7 @@ Key design:
 
 Layers: Dense (alias Layer), Dropout, BatchNormalization.
 """
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Type, Union
 
 import numpy as np
 
@@ -151,6 +151,7 @@ class Layer(BaseLayer):
         """Computes z = x @ W + b, then applies activation."""
         if not self._built:
             self.build((None, inputs.shape[1]))
+        assert self.weights is not None and self.biases is not None
         # Fail-fast shape validation
         if inputs.shape[1] != self.weights.shape[0]:
             raise ValueError(
@@ -168,6 +169,7 @@ class Layer(BaseLayer):
         d_z = self.activation.backward(d_output, cache["activation_cache"])
         inputs = cache["inputs"]
 
+        assert self.weights is not None and self.biases is not None
         dweights = inputs.T @ d_z
         dbiases = np.sum(d_z, axis=0, keepdims=True)
 
@@ -181,11 +183,12 @@ class Layer(BaseLayer):
 
     def parameters(self) -> ParamDict:
         """Returns trainable parameters: weights and biases."""
+        assert self.weights is not None and self.biases is not None
         return {"weights": self.weights, "biases": self.biases}
 
     def regularization_loss(self) -> float:
         """Returns L1/L2 regularization loss on weights."""
-        if self.kernel_regularizer is None:
+        if self.kernel_regularizer is None or self.weights is None:
             return 0.0
         return self.kernel_regularizer.loss(self.weights)
 
@@ -300,6 +303,8 @@ class BatchNormalization(BaseLayer):
         """Normalizes inputs and applies gamma/beta. Updates running stats in training."""
         if not self._built:
             self.build((None, inputs.shape[1]))
+        assert self.gamma is not None and self.beta is not None
+        assert self.running_mean is not None and self.running_var is not None
         if training:
             mean = inputs.mean(axis=0, keepdims=True)
             var = inputs.var(axis=0, keepdims=True)
@@ -343,10 +348,12 @@ class BatchNormalization(BaseLayer):
 
     def parameters(self) -> ParamDict:
         """Returns trainable parameters: gamma and beta."""
+        assert self.gamma is not None and self.beta is not None
         return {"gamma": self.gamma, "beta": self.beta}
 
     def non_trainable_state(self) -> ParamDict:
         """Returns running statistics (persisted but not trained)."""
+        assert self.running_mean is not None and self.running_var is not None
         return {"running_mean": self.running_mean, "running_var": self.running_var}
 
     def get_config(self) -> Dict[str, Any]:
@@ -361,7 +368,7 @@ class BatchNormalization(BaseLayer):
         }
 
 
-_LAYER_CLASSES = {
+_LAYER_CLASSES: Dict[str, Type[BaseLayer]] = {
     "Dense": Dense,
     "Layer": Dense,
     "Dropout": Dropout,

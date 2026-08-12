@@ -77,16 +77,15 @@ class NeuralNetwork:
         self.layers.append(layer)
         # If we already know the accumulated shape, build immediately
         # for fail-fast when adding layers in sequence.
-        if self.layers and self._accumulated_output_shape() is not None:
-            shape = self._accumulated_output_shape()
-            if not getattr(layer, "_built", False):
-                try:
-                    layer.build(shape)
-                except ValueError as e:
-                    raise ValueError(
-                        f"Error building layer {len(self.layers)-1} "
-                        f"({type(layer).__name__}): {e}"
-                    )
+        shape = self._accumulated_output_shape()
+        if shape is not None and not getattr(layer, "_built", False):
+            try:
+                layer.build(shape)
+            except ValueError as e:
+                raise ValueError(
+                    f"Error building layer {len(self.layers)-1} "
+                    f"({type(layer).__name__}): {e}"
+                )
         return self
 
     def _accumulated_output_shape(self) -> Optional[Tuple[Optional[int], int]]:
@@ -141,10 +140,11 @@ class NeuralNetwork:
                     "Pass `input_shape=(None, n_features)` to build()."
                 )
 
-        shape = input_shape
+        shape: Optional[Tuple[Optional[int], int]] = input_shape
         self._input_shape = shape
         for i, layer in enumerate(self.layers):
             try:
+                assert shape is not None
                 shape = layer.build(shape)
             except Exception as e:
                 raise ValueError(
@@ -194,14 +194,14 @@ class NeuralNetwork:
         forward-to-backward order. The gradient flows using the
         specific cache of each forward step.
         """
-        grads_per_layer = [None] * len(self.layers)
+        grads_per_layer: List[Optional[Tuple[BaseLayer, Dict[str, np.ndarray]]]] = [None] * len(self.layers)
         grad = loss_gradient
         for i in range(len(self.layers) - 1, -1, -1):
             layer = self.layers[i]
             cache = caches[i]
             grad, layer_grads = layer.backward(grad, cache)
             grads_per_layer[i] = (layer, layer_grads)
-        return grads_per_layer
+        return [item for item in grads_per_layer if item is not None]
 
     def _collect_grads_and_params(
         self, grads_per_layer: List[Tuple[BaseLayer, Dict[str, np.ndarray]]]
@@ -273,6 +273,8 @@ class NeuralNetwork:
     ) -> Dict[str, list]:
         """Trains the model for a fixed number of epochs."""
         self._ensure_ready()
+        assert self.loss_function is not None
+        assert self.optimizer is not None
         self._validate_input(x, y)
 
         # Fail-fast: ensures consistent shapes before the training loop
@@ -284,7 +286,8 @@ class NeuralNetwork:
             )
 
         # Validation setup
-        x_val, y_val = None, None
+        x_val: Optional[np.ndarray] = None
+        y_val: Optional[np.ndarray] = None
         if validation_data is not None:
             x_val, y_val = validation_data
         elif validation_split > 0.0:
@@ -344,7 +347,7 @@ class NeuralNetwork:
             for name, total in metric_sums.items():
                 logs[name] = total / steps
 
-            if x_val is not None:
+            if x_val is not None and y_val is not None:
                 val_logs = self.evaluate(x_val, y_val, batch_size=batch_size, verbose=0)
                 for k, v in val_logs.items():
                     logs[f"val_{k}"] = v
@@ -386,6 +389,7 @@ class NeuralNetwork:
     ) -> Dict[str, float]:
         """Evaluates the model on data, returns loss and metrics."""
         self._ensure_ready()
+        assert self.loss_function is not None
         steps = max(1, (len(x) + batch_size - 1) // batch_size)
         total_loss = 0.0
         metric_sums = {m.name: 0.0 for m in self.metrics}
@@ -463,7 +467,7 @@ class NeuralNetwork:
 
     def save_weights(self, filepath: str) -> None:
         """Saves parameters + non-trainable state to NPZ."""
-        np.savez(filepath, **self._all_state_arrays())
+        np.savez(filepath, **self._all_state_arrays())  # type: ignore[arg-type]
 
     def load_weights(self, filepath: str) -> None:
         """Loads weights. Requires same architecture."""
@@ -502,6 +506,7 @@ class NeuralNetwork:
 
     def _save_optimizer_state(self, filepath: str) -> None:
         """Serializes optimizer state to NPZ."""
+        assert self.optimizer is not None
         state = self.optimizer.get_state()
         flat: Dict[str, np.ndarray] = {}
         for k, v in state.items():
@@ -512,7 +517,7 @@ class NeuralNetwork:
                     flat[f"{k}/{sub_k}"] = sub_v
             else:
                 flat[k] = np.array(v)
-        np.savez(filepath, **flat)
+        np.savez(filepath, **flat)  # type: ignore[arg-type]
 
     def _load_optimizer_state(self, filepath: str) -> None:
         """Restores optimizer state from NPZ."""

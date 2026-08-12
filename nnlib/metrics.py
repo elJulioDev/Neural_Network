@@ -1,5 +1,5 @@
 """Metrics with serialization support."""
-from typing import Any, Dict, Union
+from typing import Any, Dict, Type, Union
 
 import numpy as np
 
@@ -93,7 +93,7 @@ class R2Score(Metric):
         return float(1 - ss_res / (ss_tot + 1e-12))
 
 
-_METRICS = {
+_METRICS: Dict[str, Type[Metric]] = {
     "binary_accuracy": BinaryAccuracy,
     "accuracy": BinaryAccuracy,
     "categorical_accuracy": CategoricalAccuracy,
@@ -103,7 +103,7 @@ _METRICS = {
     "r2": R2Score,
 }
 
-_METRIC_CLASSES = {
+_METRIC_CLASSES: Dict[str, Type[Metric]] = {
     "BinaryAccuracy": BinaryAccuracy,
     "CategoricalAccuracy": CategoricalAccuracy,
     "SparseCategoricalAccuracy": SparseCategoricalAccuracy,

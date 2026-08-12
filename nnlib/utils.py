@@ -8,7 +8,7 @@ standardize: z-score (mean 0, std 1).
 shuffle: shuffles X and y together.
 batch_iterator: mini-batch generator.
 """
-from typing import Iterator, Tuple
+from typing import Iterator, Optional, Tuple
 
 import numpy as np
 
@@ -18,7 +18,7 @@ def train_test_split(
     y: np.ndarray,
     test_size: float = 0.2,
     shuffle: bool = True,
-    random_state: int = None,
+    random_state: Optional[int] = None,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Returns (X_train, X_test, y_train, y_test)."""
     if not 0.0 < test_size < 1.0:
@@ -37,7 +37,7 @@ def train_test_split(
     return X[train_idx], X[test_idx], y[train_idx], y[test_idx]
 
 
-def to_categorical(y: np.ndarray, num_classes: int = None) -> np.ndarray:
+def to_categorical(y: np.ndarray, num_classes: Optional[int] = None) -> np.ndarray:
     """Converts index vector to one-hot matrix."""
     y = np.asarray(y).flatten().astype(int)
     if num_classes is None:
@@ -63,7 +63,7 @@ def standardize(X: np.ndarray, axis: int = 0) -> np.ndarray:
     return (X - mean) / (std + 1e-12)
 
 
-def shuffle_arrays(X: np.ndarray, y: np.ndarray, random_state: int = None) -> Tuple[np.ndarray, np.ndarray]:
+def shuffle_arrays(X: np.ndarray, y: np.ndarray, random_state: Optional[int] = None) -> Tuple[np.ndarray, np.ndarray]:
     """Shuffles X and y while maintaining correspondence."""
     rng = np.random.default_rng(random_state)
     perm = rng.permutation(X.shape[0])

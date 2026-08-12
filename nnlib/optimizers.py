@@ -12,7 +12,7 @@ touching the optimizer code:
 
 All support gradient clipping (clip_norm, clip_value).
 """
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy as np
 
@@ -282,8 +282,8 @@ class Adam(Optimizer):
         return cfg
 
 
-_OPTIMIZERS = {"sgd": SGD, "adagrad": AdaGrad, "rmsprop": RMSprop, "adam": Adam}
-_OPT_CLASSES = {"SGD": SGD, "AdaGrad": AdaGrad, "RMSprop": RMSprop, "Adam": Adam}
+_OPTIMIZERS: Dict[str, Type[Optimizer]] = {"sgd": SGD, "adagrad": AdaGrad, "rmsprop": RMSprop, "adam": Adam}
+_OPT_CLASSES: Dict[str, Type[Optimizer]] = {"SGD": SGD, "AdaGrad": AdaGrad, "RMSprop": RMSprop, "Adam": Adam}
 
 
 def get_optimizer(opt: Union[str, Dict[str, Any], Optimizer]) -> Optimizer:
