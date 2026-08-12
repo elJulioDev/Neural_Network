@@ -207,12 +207,13 @@ class NeuralNetwork:
         self, grads_per_layer: List[Tuple[BaseLayer, Dict[str, np.ndarray]]]
     ) -> List[Tuple[int, str, np.ndarray, np.ndarray]]:
         """
-        Collects tuples (layer_id, param_name, param_array, grad_array)
+        Collects tuples (layer_index, param_name, param_array, grad_array)
         from the parameter dict of each layer and the gradient dict
-        returned by backward. Independent of concrete parameter names.
+        returned by backward. Uses layer index (not id) so optimizer
+        state survives save/load.
         """
         collected = []
-        for layer, grads in grads_per_layer:
+        for i, (layer, grads) in enumerate(grads_per_layer):
             if not grads:
                 continue
             params = layer.parameters()
@@ -222,7 +223,7 @@ class NeuralNetwork:
                         f"Layer {type(layer).__name__}: parameter '{name}' "
                         f"has no corresponding gradient."
                     )
-                collected.append((id(layer), name, param, grads[name]))
+                collected.append((i, name, param, grads[name]))
         return collected
 
     def _regularization_loss(self) -> float:
@@ -515,7 +516,7 @@ class NeuralNetwork:
             elif isinstance(v, dict):
                 for sub_k, sub_v in v.items():
                     flat[f"{k}/{sub_k}"] = sub_v
-            else:
+            elif isinstance(v, (int, float)):
                 flat[k] = np.array(v)
         np.savez(filepath, **flat)  # type: ignore[arg-type]
 

@@ -130,9 +130,10 @@ class SGD(Optimizer):
     def set_state(self, state: Dict[str, Any]) -> None:
         """Restores SGD mutable state."""
         super().set_state(state)
+        raw = state.get("_velocity", {})
         self._velocity = {
-            tuple(k.split("_", 1)): v
-            for k, v in state.get("_velocity", {}).items()
+            (int(k[0]), k[1]) if isinstance(k, (list, tuple)) else tuple(k.split("_", 1)): v
+            for k, v in raw.items()
         }
 
     def get_config(self) -> Dict[str, Any]:
@@ -165,9 +166,10 @@ class AdaGrad(Optimizer):
     def set_state(self, state: Dict[str, Any]) -> None:
         """Restores AdaGrad mutable state."""
         super().set_state(state)
+        raw = state.get("_cache", {})
         self._cache = {
-            tuple(k.split("_", 1)): v
-            for k, v in state.get("_cache", {}).items()
+            (int(k[0]), k[1]) if isinstance(k, (list, tuple)) else tuple(k.split("_", 1)): v
+            for k, v in raw.items()
         }
 
     def get_config(self) -> Dict[str, Any]:
@@ -208,9 +210,10 @@ class RMSprop(Optimizer):
     def set_state(self, state: Dict[str, Any]) -> None:
         """Restores RMSprop mutable state."""
         super().set_state(state)
+        raw = state.get("_cache", {})
         self._cache = {
-            tuple(k.split("_", 1)): v
-            for k, v in state.get("_cache", {}).items()
+            (int(k[0]), k[1]) if isinstance(k, (list, tuple)) else tuple(k.split("_", 1)): v
+            for k, v in raw.items()
         }
 
     def get_config(self) -> Dict[str, Any]:
@@ -262,13 +265,15 @@ class Adam(Optimizer):
     def set_state(self, state: Dict[str, Any]) -> None:
         """Restores Adam mutable state."""
         super().set_state(state)
+        raw_m = state.get("_m", {})
         self._m = {
-            tuple(k.split("_", 1)): v
-            for k, v in state.get("_m", {}).items()
+            (int(k[0]), k[1]) if isinstance(k, (list, tuple)) else tuple(k.split("_", 1)): v
+            for k, v in raw_m.items()
         }
+        raw_v = state.get("_v", {})
         self._v = {
-            tuple(k.split("_", 1)): v
-            for k, v in state.get("_v", {}).items()
+            (int(k[0]), k[1]) if isinstance(k, (list, tuple)) else tuple(k.split("_", 1)): v
+            for k, v in raw_v.items()
         }
 
     def get_config(self) -> Dict[str, Any]:

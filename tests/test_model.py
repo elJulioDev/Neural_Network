@@ -163,6 +163,42 @@ class TestPersistenceJSON(unittest.TestCase):
             rm_after = loaded.layers[1].running_mean
             np.testing.assert_allclose(rm_before, rm_after)
 
+    def test_optimizer_state_persisted(self):
+        """Adam m/v must survive save/load — optimizer continues, not reset."""
+        np.random.seed(0)
+        X = np.random.randn(20, 4)
+        y = np.random.randn(20, 1)
+
+        model = NeuralNetwork()
+        model.add(Dense(8, input_size=4, activation="relu"))
+        model.add(Dense(1, activation="linear"))
+        model.compile(optimizer=Adam(learning_rate=0.001), loss="mse")
+
+        # Train a few epochs to build up moments
+        model.fit(X, y, epochs=5, batch_size=10, verbose=0)
+
+        # Capture optimizer state before save
+        state_before = model.optimizer.get_state()
+        iterations_before = state_before["iterations"]
+        # Adam stores _m and _v dicts with (int, str) keys
+        m_before = {k: v.copy() for k, v in state_before.get("_m", {}).items()}
+        v_before = {k: v.copy() for k, v in state_before.get("_v", {}).items()}
+        self.assertGreater(iterations_before, 0)
+        self.assertTrue(len(m_before) > 0)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model.save(tmpdir)
+            loaded = NeuralNetwork.load(tmpdir)
+
+            state_after = loaded.optimizer.get_state()
+            self.assertEqual(state_after["iterations"], iterations_before)
+            for key in m_before:
+                self.assertIn(key, state_after["_m"])
+                np.testing.assert_allclose(m_before[key], state_after["_m"][key])
+            for key in v_before:
+                self.assertIn(key, state_after["_v"])
+                np.testing.assert_allclose(v_before[key], state_after["_v"][key])
+
 
 class TestShapePropagation(unittest.TestCase):
     """Fail-fast on incompatible shapes."""
