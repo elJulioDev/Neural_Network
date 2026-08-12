@@ -130,11 +130,7 @@ class SGD(Optimizer):
     def set_state(self, state: Dict[str, Any]) -> None:
         """Restores SGD mutable state."""
         super().set_state(state)
-        raw = state.get("_velocity", {})
-        self._velocity = {
-            (int(k[0]), k[1]) if isinstance(k, (list, tuple)) else tuple(k.split("_", 1)): v
-            for k, v in raw.items()
-        }
+        self._velocity = {_parse_state_key(k): v for k, v in state.get("_velocity", {}).items()}
 
     def get_config(self) -> Dict[str, Any]:
         """Returns SGD config."""
@@ -166,11 +162,7 @@ class AdaGrad(Optimizer):
     def set_state(self, state: Dict[str, Any]) -> None:
         """Restores AdaGrad mutable state."""
         super().set_state(state)
-        raw = state.get("_cache", {})
-        self._cache = {
-            (int(k[0]), k[1]) if isinstance(k, (list, tuple)) else tuple(k.split("_", 1)): v
-            for k, v in raw.items()
-        }
+        self._cache = {_parse_state_key(k): v for k, v in state.get("_cache", {}).items()}
 
     def get_config(self) -> Dict[str, Any]:
         """Returns AdaGrad config."""
@@ -210,11 +202,7 @@ class RMSprop(Optimizer):
     def set_state(self, state: Dict[str, Any]) -> None:
         """Restores RMSprop mutable state."""
         super().set_state(state)
-        raw = state.get("_cache", {})
-        self._cache = {
-            (int(k[0]), k[1]) if isinstance(k, (list, tuple)) else tuple(k.split("_", 1)): v
-            for k, v in raw.items()
-        }
+        self._cache = {_parse_state_key(k): v for k, v in state.get("_cache", {}).items()}
 
     def get_config(self) -> Dict[str, Any]:
         """Returns RMSprop config."""
@@ -265,16 +253,8 @@ class Adam(Optimizer):
     def set_state(self, state: Dict[str, Any]) -> None:
         """Restores Adam mutable state."""
         super().set_state(state)
-        raw_m = state.get("_m", {})
-        self._m = {
-            (int(k[0]), k[1]) if isinstance(k, (list, tuple)) else tuple(k.split("_", 1)): v
-            for k, v in raw_m.items()
-        }
-        raw_v = state.get("_v", {})
-        self._v = {
-            (int(k[0]), k[1]) if isinstance(k, (list, tuple)) else tuple(k.split("_", 1)): v
-            for k, v in raw_v.items()
-        }
+        self._m = {_parse_state_key(k): v for k, v in state.get("_m", {}).items()}
+        self._v = {_parse_state_key(k): v for k, v in state.get("_v", {}).items()}
 
     def get_config(self) -> Dict[str, Any]:
         """Returns Adam config."""
@@ -289,6 +269,14 @@ class Adam(Optimizer):
 
 _OPTIMIZERS: Dict[str, Type[Optimizer]] = {"sgd": SGD, "adagrad": AdaGrad, "rmsprop": RMSprop, "adam": Adam}
 _OPT_CLASSES: Dict[str, Type[Optimizer]] = {"SGD": SGD, "AdaGrad": AdaGrad, "RMSprop": RMSprop, "Adam": Adam}
+
+
+def _parse_state_key(k: Any) -> Tuple[int, str]:
+    """Parses a serialized optimizer state key back to (layer_index, param_name)."""
+    if isinstance(k, (list, tuple)):
+        return (int(k[0]), k[1])
+    layer_str, name = k.split("_", 1)
+    return (int(layer_str), name)
 
 
 def get_optimizer(opt: Union[str, Dict[str, Any], Optimizer]) -> Optimizer:
